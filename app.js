@@ -114,7 +114,7 @@ it:{
  t2:"Un editor Three.js in un solo file per il render architettonico: allestisce e illumina una sala in 3D, con misure al centimetro e illuminazione fotometrica.",
  t3:"In sviluppo. App di previsualizzazione con manichini, camere e ottiche simulate e keyframe. Registra la vista camera come riferimento video per Seedance e Omni.",
  t4:"In sviluppo. Toglie vocali tenute e intercalari dalle registrazioni dei podcast, e ricuce il parlato con crossfade diretti, senza incollare silenzio o fondo stanza.",
- stack_h:"Cassetta degli attrezzi",
+ stack_h:"Toolbox",
  contact_h:"Contatti", cta_mail:"Scrivimi una mail", cta_reel:"Richiedi il reel completo",
  f_name:"Nome", f_email:"La tua email", f_msg:"Messaggio", f_send:"Invia messaggio", f_note:"Si apre la tua app di posta.",
  refs:"Referenze disponibili su richiesta.",
@@ -886,7 +886,7 @@ document.getElementById("silent").addEventListener("click", function(){ begin(fa
 (function(){
   var nums = Array.prototype.slice.call(document.querySelectorAll(".num"));
   var groups = Array.prototype.slice.call(document.querySelectorAll(".proj .figs"));
-  var DUR = 1500, STAG = 750;   /* 750 ms between one number reaching its value and the next */
+  var DUR = 1500, STAG = 1000;   /* one second between the glint of one number and the next, left to right */
   function land(el, glow){ el.setAttribute("data-done","1"); renderNum(el, +el.getAttribute("data-to")); if(glow) el.classList.add("peak"); }
   function inCard(el){ return !!el.closest(".proj .figs"); }
   if(reduced || !("IntersectionObserver" in window)){ nums.forEach(function(n){ land(n, inCard(n)); }); return; }
@@ -907,7 +907,7 @@ document.getElementById("silent").addEventListener("click", function(){ begin(fa
         var ns = en.target.querySelectorAll(".num"); ns.forEach(function(el, i){ run(el, t0, DUR + i*STAG, true); });
         /* the card's title glints once the last number has finished its own glint (it lands, then its light takes ~1.35 s) */
         var gl = en.target.closest(".glass"), h = gl && gl.querySelector("h3");
-        if(h){ setTimeout(function(){ h.setAttribute("data-txt", h.textContent); h.classList.remove("tpeak"); void h.offsetWidth; h.classList.add("tpeak"); }, DUR + (ns.length - 1)*STAG + 1350); }
+        if(h){ setTimeout(function(){ h.setAttribute("data-txt", h.textContent); h.classList.remove("tpeak"); void h.offsetWidth; h.classList.add("tpeak"); }, DUR + (ns.length - 1)*STAG + 1050); }
       } else { run(en.target, t0, 1700, false); }
     });
   },{threshold:.3});
