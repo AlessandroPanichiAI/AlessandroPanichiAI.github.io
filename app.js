@@ -859,6 +859,7 @@ async function begin(withSound){
   if(withSound){ startSound(); try{ if(actx && actx.state === "suspended") await actx.resume(); }catch(e){} }
   if(reduced){ closeGate(); return; }
   gate.classList.add("running");
+  await wait(360);   /* the ring fades in over .3 s: the 3 appears only when the ring is fully there, so the first count is as long as the other two */
   var seq = [3,2,1], STEP = 1000, t0 = performance.now() + 30;
   await waitUntil(t0); t0 = performance.now();   /* every change is timed from the moment the 3 really appears */
   for(var i=0;i<seq.length;i++){
