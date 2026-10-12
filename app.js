@@ -24,7 +24,7 @@ en:{
  thesys_meta:"Thesis short film, 2025",
  thesys_p:"A sci-fi thesis short film, made entirely with AI. Written, directed and performed by me. My first AI project, made over six months during my studies. 15'25\", audio mixed in 5.1.",
  fig_allgens:"generations", fig_spent:"spent", fig_ofvideo:"of them video",
- bio_p:"Hi! I'm Alessandro Panichi. I started out as a sound engineer in 2015, and I became passionate about the creative process behind AI content production. I graduated in Cinema and Audiovisual Art and Technology from the Civica Scuola di Cinema Luchino Visconti in Milan, specializing in sound. My thesis is THESYS, a 15-minute sci-fi short film made entirely with AI. I'm looking for a motivated team where I can keep improving.",
+ bio_p:"Hi! I'm Alessandro Panichi. I started out as a sound engineer in 2015 and then became passionate about the creative process behind AI content production. I graduated in Cinema and Audiovisual Art and Technology from the Civica Scuola di Cinema Luchino Visconti in Milan, specializing in Sound. My thesis is THESYS, a 15-minute sci-fi short film made entirely with AI. I'm looking for a passionate team where I can keep improving.",
  secret_h:"Confidential project", secret_meta:"Commissioned by Siemens", secret_seal:"Viewable on request",
  secret_p:"A short film commissioned by Siemens. Viewable only with written authorization.",
  fig_images:"generated images", fig_gens:"video generations", fig_shots:"final shots", fig_hours:"hours of work",
@@ -43,7 +43,7 @@ en:{
  vfx_h:"VFX animations",
  vfx_p:"Cosmic zooms, explosions and camera moves no set could give: visual effects generated with AI and finished in the edit.",
  c1_h:"Realistic characters",
- c1:"Character sheets and locked identities, for a consistent, solid story.",
+ c1:"Character sheets and defined identities, for a consistent, solid story.",
  c2_h:"Light and colour in service of the direction",
  c2:"Light sources, shadows and palette, brought together to convey emotion.",
  c3_h:"A quality pipeline",
@@ -79,7 +79,7 @@ it:{
  thesys_meta:"Cortometraggio di tesi, 2025",
  thesys_p:"Cortometraggio di tesi di fantascienza, realizzato interamente con l'intelligenza artificiale. Scritto, diretto e interpretato da me. Il mio primo lavoro con l'AI, realizzato in sei mesi durante gli studi. 15'25\", mix audio in 5.1.",
  fig_allgens:"generazioni", fig_spent:"di spesa", fig_ofvideo:"di cui video",
- bio_p:"Ciao! Sono Alessandro Panichi. Ho iniziato come fonico nel 2015 e mi sono appassionato al processo creativo che sta dietro alla produzione di contenuti con l'AI. Mi sono diplomato in Arte e tecnologia del cinema e dell'audiovisivo alla Civica Scuola di Cinema Luchino Visconti di Milano, con specializzazione in suono. La mia tesi è THESYS, un cortometraggio di fantascienza di 15 minuti realizzato interamente con l'AI. Cerco una squadra motivata in cui continuare a migliorare.",
+ bio_p:"Ciao! Sono Alessandro Panichi. Ho iniziato come fonico nel 2015 e mi sono appassionato al processo creativo che sta dietro alla produzione di contenuti con l'AI. Mi sono diplomato in Arte e Tecnologia del Cinema e dell'Audiovisivo alla Civica Scuola di Cinema Luchino Visconti di Milano, con specializzazione in Suono. La mia tesi è THESYS, un cortometraggio di fantascienza di 15 minuti realizzato interamente con l'AI. Cerco una squadra appassionata in cui continuare a migliorare.",
  secret_h:"Progetto riservato", secret_meta:"Commissionato da Siemens", secret_seal:"Visibile su richiesta",
  secret_p:"Un cortometraggio commissionato da Siemens. Visibile solo previa autorizzazione scritta.",
  fig_images:"immagini generate", fig_gens:"generazioni video", fig_shots:"inquadrature finali", fig_hours:"ore di lavoro",
@@ -98,7 +98,7 @@ it:{
  vfx_h:"Animazioni VFX",
  vfx_p:"Zoom cosmici, esplosioni e movimenti di macchina impossibili su un set: effetti visivi generati con l'AI e rifiniti in montaggio.",
  c1_h:"Personaggi realistici",
- c1:"Character sheet e identità bloccate, per una storia coerente e solida.",
+ c1:"Character sheet e identità definite, per una storia coerente e solida.",
  c2_h:"Luce e colore al servizio della regia",
  c2:"Fonti, ombre e palette, riunite per raccontare le emozioni.",
  c3_h:"Una pipeline di qualità",
@@ -714,9 +714,9 @@ var FX = {
   /* countdown: the classic film-leader beep, a pure 1 kHz tone (~85 ms) */
   tick: function(){ if(!fxOK()) return; bit("sine", [1000], 0, .04, .07, .085); },
   /* the language switch: the base click, one whole tone higher (every frequency x 2^(2/12)) */
-  lang: function(){ if(!fxOK()) return; var u = 1.1225;
-    grain(3000*u*rv(.06), .26*rv(.1), 0, 0, 1.3, .012); hiss(230*u, 150*u, .045, .22*rv(.1), .7, .001, 0, .0015); hiss(9500*u, 9000*u, .007, .05, 1, .0005, 0, .0005);
-    grain(2200*u*rv(.15), .06, .009 + Math.random()*.006, 0, 1.2, .006); grain(5200*u*rv(.15), .04, .018 + Math.random()*.008, 0, 1.2, .005); },
+  lang: function(){ if(!fxOK()) return; var u = 1.1225, g = innerWidth < 700 ? .5 : 1;   /* phones: 6 dB lower (x .5) */
+    grain(3000*u*rv(.06), .26*g*rv(.1), 0, 0, 1.3, .012); hiss(230*u, 150*u, .045, .22*g*rv(.1), .7, .001, 0, .0015); hiss(9500*u, 9000*u, .007, .05*g, 1, .0005, 0, .0005);
+    grain(2200*u*rv(.15), .06*g, .009 + Math.random()*.006, 0, 1.2, .006); grain(5200*u*rv(.15), .04*g, .018 + Math.random()*.008, 0, 1.2, .005); },
   start: function(){ if(!fxOK()) return; FX.open(); },
   open: function(){ if(!fxOK()) return; hiss(300, 2600, .26, .14, .8, 0, 0, .1); grain(1400, .03, .06, -.2, 1.2, .005); grain(2600, .03, .12, .2, 1.2, .005); grain(4200, .03, .18, 0, 1.2, .005);
     grain(3000*rv(.04), .18, .24, 0, 1.3, .012); body(.15, .241); },
