@@ -2,6 +2,7 @@
 if (window.top !== window.self) { document.documentElement.style.display = "none"; try { window.top.location.replace(window.location.href); } catch (e) {} }
 
 var MEDIA = {"gpm_loop": "gpm_loop.mp4", "thesys_loop": "thesys_loop.mp4", "emotion_loop": "media/emotion_loop.mp4", "craft_face": "media/craft_face.mp4", "craft_light": "craft_light.mp4", "craft_eye": "media/craft_eye.mp4", "frag_blast": "media/frag_blast.mp4", "frag_leaves": "frag_leaves.mp4", "frag_hole": "frag_hole.mp4", "frag_speaker": "media/frag_speaker.mp4", "frag_core": "frag_core.mp4", "cosmos_wide": "cosmos_wide.mp4", "content_reel": "content_reel.mp4", "gpm_rook_a": "media/gpm_rook_a.mp4", "gpm_rook_b": "media/gpm_rook_b.mp4", "thesys_rook7": "media/thesys_rook7.mp4", "emotion_rook7": "emotion_rook7.mp4", "emotion_eyes": "media/emotion_eyes.mp4", "reel": "reel.mp4", "tool_prompt": "media/tool_prompt.mp4", "tool_stage": "media/tool_stage.mp4", "tool_blockcam": "media/tool_blockcam.mp4", "tool_filler": "media/tool_filler.mp4"};
+var MEDIA_M = {"frag_blast": "media/frag_blast_m.mp4", "frag_leaves": "media/frag_leaves_m.mp4", "frag_core": "media/frag_core_m.mp4", "cosmos_wide": "media/cosmos_wide_m.mp4", "content_reel": "media/content_reel_m.mp4", "gpm_rook_a": "media/gpm_rook_a_m.mp4", "gpm_rook_b": "media/gpm_rook_b_m.mp4", "thesys_rook7": "media/thesys_rook7_m.mp4", "emotion_rook7": "media/emotion_rook7_m.mp4", "emotion_eyes": "media/emotion_eyes_m.mp4", "tool_prompt": "media/tool_prompt_m.mp4", "tool_stage": "media/tool_stage_m.mp4", "tool_blockcam": "media/tool_blockcam_m.mp4", "tool_filler": "media/tool_filler_m.mp4"};
 var POSTERS = {"gpm_loop": "media/gpm_loop.jpg", "thesys_loop": "media/thesys_loop.jpg", "emotion_loop": "media/emotion_loop.jpg", "craft_face": "media/craft_face.jpg", "craft_light": "media/craft_light.jpg", "craft_eye": "media/craft_eye.jpg", "frag_blast": "media/frag_blast.jpg", "frag_leaves": "media/frag_leaves.jpg", "frag_hole": "media/frag_hole.jpg", "frag_speaker": "media/frag_speaker.jpg", "frag_core": "media/frag_core.jpg", "cosmos_wide": "media/cosmos_wide.jpg", "content_reel": "media/content_reel.jpg", "gpm_rook_a": "media/gpm_rook_a.jpg", "gpm_rook_b": "media/gpm_rook_b.jpg", "thesys_rook7": "media/thesys_rook7.jpg", "emotion_rook7": "media/emotion_rook7.jpg", "emotion_eyes": "media/emotion_eyes.jpg", "reel": "media/reel.jpg", "tool_prompt": "media/tool_prompt.jpg", "tool_stage": "media/tool_stage.jpg", "tool_blockcam": "media/tool_blockcam.jpg", "tool_filler": "media/tool_filler.jpg"};
 var FULL = {};
 var SONG = "song.mp3";
@@ -154,7 +155,9 @@ document.querySelectorAll(".lang button").forEach(function(b){
     v.addEventListener("playing", function(){ v.classList.add("on"); });
     v.addEventListener("loadeddata", function(){ v.classList.add("on"); });
   });
-  function load(v){ if(!v.getAttribute("src")){ var k=v.getAttribute("data-m"); if(MEDIA[k]) v.src = MEDIA[k]; } }
+  /* phones: the clips that are seen together use a lighter version (same frames, same speed, smaller picture); the single big clips stay as they are */
+  var LIGHT = innerWidth < 700 && typeof MEDIA_M !== "undefined";
+  function load(v){ if(!v.getAttribute("src")){ var k=v.getAttribute("data-m"), src = (LIGHT && MEDIA_M[k]) ? MEDIA_M[k] : MEDIA[k]; if(src) v.src = src; } }
   function play(v){ load(v); if(reduced){ v.classList.add("on"); return; } var p = v.play(); if(p && p.catch) p.catch(function(){ v.classList.add("on"); }); }
   if(!("IntersectionObserver" in window)){ vids.forEach(play); return; }
   var io = new IntersectionObserver(function(entries){
@@ -520,6 +523,8 @@ document.querySelectorAll(".lang button").forEach(function(b){
 
 /* ======= Sound: the song plus interface FX (clips never carry audio) ======= */
 var TRACK_SRC = (typeof SONG !== "undefined" && SONG) ? SONG : "";
+/* phones: the song 4.7 dB louder (measured: its highest peak goes from -5.7 to -1.0 dBTP, so it never clips) */
+var MUSIC_LVL = innerWidth < 700 ? .8 * Math.pow(10, 4.7/20) : .8;
 var actx = null, master = null, musicGain = null, fxIn = null, noiseBuf = null, audioEl = null;
 var soundOn = false, soundStarted = false;
 function updateSoundLabel(){
@@ -551,7 +556,11 @@ function buildFxBusV3(ctx, dest, outGain){
 function buildGraph(){
   var AC = window.AudioContext || window.webkitAudioContext; if(!AC) return false;
   actx = new AC();
-  master = actx.createGain(); master.gain.value = 1; master.connect(actx.destination);
+  master = actx.createGain(); master.gain.value = 1;
+  if(innerWidth < 700){   /* phones: a safety limiter at the very end, it only acts if an interface sound lands on a song peak */
+    var lim = actx.createDynamicsCompressor(); lim.threshold.value = -0.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = .001; lim.release.value = .1;
+    master.connect(lim); lim.connect(actx.destination);
+  } else master.connect(actx.destination);
   musicGain = actx.createGain(); musicGain.gain.value = 0; musicGain.connect(master);
   fxIn = buildFxBusV3(actx, master, 1.2);
   noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
@@ -588,18 +597,18 @@ function startSound(){
     } else { startDrone(); }
     var t = actx.currentTime;
     musicGain.gain.cancelScheduledValues(t); musicGain.gain.setValueAtTime(0, t);   /* ...and stay silent until the reveal */
-    if(!TRACK_SRC) musicGain.gain.linearRampToValueAtTime(.8, t + 4);
+    if(!TRACK_SRC) musicGain.gain.linearRampToValueAtTime(MUSIC_LVL, t + 4);
     soundStarted = true; soundOn = true;
   }catch(e){ soundOn = false; }
   updateSoundLabel();
 }
-var shelf = null, songProbe = null, SHELF_HZ = 2500, SHELF_DB = -12, songRouted = false, songReleased = true;
+var shelf = null, songProbe = null, SHELF_HZ = 2500, SHELF_DB = innerWidth < 700 ? -6 : -12, songRouted = false, songReleased = true;
 /* the song starts from its first second exactly as the page begins to form */
 window.__releaseSong = function(){
   if(!audioEl || songReleased) return; songReleased = true;
   try{ audioEl.currentTime = 0; }catch(e){}
   var p = audioEl.play(); if(p && p.catch) p.catch(function(){});
-  if(actx){ var t = actx.currentTime; musicGain.gain.cancelScheduledValues(t); musicGain.gain.setValueAtTime(0, t); musicGain.gain.linearRampToValueAtTime(.8, t + .8); }
+  if(actx){ var t = actx.currentTime; musicGain.gain.cancelScheduledValues(t); musicGain.gain.setValueAtTime(0, t); musicGain.gain.linearRampToValueAtTime(MUSIC_LVL, t + .8); }
   if(!songRouted){ audioEl.volume = .9; }
   else { setTimeout(checkSongPath, 4000); setTimeout(checkSongPath, 9000); }
 };
