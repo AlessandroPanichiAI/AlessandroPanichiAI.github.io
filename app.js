@@ -415,7 +415,8 @@ document.querySelectorAll(".lang button").forEach(function(b){
   gl.uniform1i(U.uA, 0); gl.uniform1i(U.uB, 1); gl.uniform1i(U.uC, 2);
   var scale = innerWidth < 700 ? .5 : .45, W = 0, H = 0, T = 0, last = 0, running = false, winStart = 0, winFrames = 0;
   var FR = [], rects = new Float32Array(NR*4);
-  var MOB = innerWidth < 700;                                                       /* phones: smoke 15% less dense */
+  var MOB = innerWidth < 700;
+  var DESK_DENS = 1.4;                                                          /* computer: 40% more smoke (it was still too thin) */                                                       /* phones: smoke 15% less dense */
   var SLOW = innerWidth < 820 || !!(window.matchMedia && matchMedia("(pointer:coarse)").matches);   /* phones and tablets: lighter drawing */
   var MINDT = SLOW ? 40 : 31, goT = 0, bad = 0, rn = 0, rDirty = true, rStamp = 0, gain = 1, gainT = 1, lastGain = 0, panels = null;
   function frames(){ FR = document.querySelectorAll(".hero-panel, .reel-frame, .proj, #bio .glass"); }
@@ -448,9 +449,9 @@ document.querySelectorAll(".lang button").forEach(function(b){
       rDirty = false; rStamp = nowT; }
     var n = rn;
     if(nowT - lastGain > 250){ lastGain = nowT; gainT = MOB ? 1 : Math.min(1.7, Math.max(1, .5/Math.max(.05, coverage())));   /* phones: just the 15% reduction, no boost */ }
-    gain += (gainT - gain) * .06; window.__smokeGain = (MOB ? .85 : 1) * gain;
+    gain += (gainT - gain) * .06; window.__smokeGain = (MOB ? .85 : DESK_DENS) * gain;
     gl.useProgram(pr); gl.bindFramebuffer(gl.FRAMEBUFFER, blurOK ? fb[0] : null); gl.viewport(0, 0, W, H);
-    gl.uniform2f(U.uRes, W, H); gl.uniform1f(U.uT, T); gl.uniform1f(U.uReveal, rv); gl.uniform1f(U.uDens, (MOB ? .85 : 1) * gain); gl.uniform4fv(U.uR, rects); gl.uniform1i(U.uN, n);
+    gl.uniform2f(U.uRes, W, H); gl.uniform1f(U.uT, T); gl.uniform1f(U.uReveal, rv); gl.uniform1f(U.uDens, (MOB ? .85 : DESK_DENS) * gain); gl.uniform4fv(U.uR, rects); gl.uniform1i(U.uN, n);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     if(!blurOK) return;
     var w = weights(), ox = Math.floor(Math.random()*64), oy = Math.floor(Math.random()*64);
