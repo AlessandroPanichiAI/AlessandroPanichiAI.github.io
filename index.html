@@ -244,9 +244,9 @@ header.hero .hero-panel{border:1px solid rgba(232,180,104,.85);box-shadow:0 0 18
 .hero .field .frag.hole .clip::after{display:none}
 .hero .field .frag.hole .clip{box-shadow:none}
 .rooks{display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px,1.4vw,18px);margin-top:clamp(14px,2vw,24px)}
-.syn{aspect-ratio:16/9;display:flex;flex-direction:column;justify-content:center;padding:clamp(16px,2.4vw,34px);border:1px solid rgba(232,180,104,.32);border-radius:3px;background:rgba(236,230,218,.03)}
-.syn .k{font-family:var(--serif);font-size:clamp(1.3rem,2.2vw,1.8rem);margin:0 0 8px}
-.syn p{margin:0;color:var(--mute);font-size:clamp(.92rem,1.2vw,1.02rem);line-height:1.55}
+.syn{aspect-ratio:16/9;display:flex;flex-direction:column;justify-content:center;padding:clamp(16px,2.4vw,34px);border:1px solid rgba(232,180,104,.32);border-radius:3px;background:linear-gradient(rgba(10,9,8,.2),rgba(10,9,8,.2)),rgba(236,230,218,.03)}   /* 20% less see-through */
+.syn .k{font-family:var(--serif);font-size:clamp(1.3rem,2.2vw,1.8rem);margin:0 0 8px;text-shadow:0 0 14px rgba(238,222,186,.12),0 0 3px rgba(238,222,186,.06)}   /* a very, very light pale-gold glow */
+.syn p{margin:0;color:var(--mute);font-size:clamp(.92rem,1.2vw,1.02rem);line-height:1.55;text-shadow:0 0 10px rgba(238,222,186,.08)}
 .drift.wide-gap{margin:clamp(40px,7vw,110px) auto}
 .rooks .clip{aspect-ratio:16/9}
 
@@ -544,7 +544,7 @@ Developed with AI.</p>
         <h3 data-i18n="secret_h">Confidential project</h3>
         <p class="meta" data-i18n="secret_meta">Commissioned by Siemens</p>
         <div class="toolrow"><span>GPT Image</span><span>Seedance 2.0</span><span>Suno</span><span>DaVinci Resolve</span></div>
-        <p class="credits" data-i18n="credits_full"></p>
+        <p class="credits" data-i18n="credits_noidea"></p>
         <p data-i18n="secret_p"></p>
         <div class="figs n4">
           <div class="fig"><span class="num" data-to="1000" data-pre="~">~1,000</span><span class="lab" data-i18n="fig_images">generated images</span></div>
