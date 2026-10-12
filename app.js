@@ -706,7 +706,7 @@ var FX = {
     grain(7200*rv(.05), .063, .006, 0, 2, .003); hiss(12000, 12000, .004, .032, 1.2, .0005, 0, .0003); },
   /* countdown: the classic film-leader beep, a pure 1 kHz tone (~85 ms) */
   tick: function(){ if(!fxOK()) return; bit("sine", [1000], 0, .04, .07, .085); },
-  lang: function(){ if(!fxOK()) return; if(!hatBuf){ loadHat(); return; } var src = actx.createBufferSource(), g = actx.createGain(); src.buffer = hatBuf; g.gain.value = .5; src.connect(g); route(g, 0); src.start(); },
+  lang: function(){ if(!fxOK()) return; if(!hatBuf){ loadHat(); return; } var src = actx.createBufferSource(), g = actx.createGain(); src.buffer = hatBuf; g.gain.value = .2; src.connect(g); route(g, 0); src.start(); },   /* 8 dB below the first level (.5) */
   start: function(){ if(!fxOK()) return; FX.open(); },
   open: function(){ if(!fxOK()) return; hiss(300, 2600, .26, .14, .8, 0, 0, .1); grain(1400, .03, .06, -.2, 1.2, .005); grain(2600, .03, .12, .2, 1.2, .005); grain(4200, .03, .18, 0, 1.2, .005);
     grain(3000*rv(.04), .18, .24, 0, 1.3, .012); body(.15, .241); },
@@ -720,7 +720,7 @@ document.getElementById("soundBtn").addEventListener("click", function(){
 /* where the FX fire */
 (function(){
   var fine = !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches);
-  var SEL = ".btn,.lang button,.linkbtn,#soundBtn,.proj,.craft .clip", last = null, lastT = 0;
+  var SEL = ".lang,#soundBtn", last = null, lastT = 0;   /* the hover click only when entering the sound pill or the language box (as a whole: moving from EN to IT inside it is silent) */
   if(fine){
     document.addEventListener("pointerover", function(e){
       var t = e.target.closest && e.target.closest(SEL); if(!t || t === last) return;
