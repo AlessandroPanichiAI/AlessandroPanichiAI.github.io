@@ -156,33 +156,25 @@ document.querySelectorAll(".lang button").forEach(function(b){
     var k = v.getAttribute("data-m");
     if(POSTERS[k]) v.poster = POSTERS[k];
     v.muted = true; v.setAttribute("muted","");
-    v.addEventListener("loadedmetadata", function(){ var st = startOf(v); if(st){ try{ v.currentTime = st; }catch(e){} } });   /* the reel opens on its chosen shot */
+    v.addEventListener("loadedmetadata", function(){ var st = startOf(v); if(st && !v.__st){ v.__st = true; try{ v.currentTime = st; }catch(e){} } });   /* the reel opens on its chosen shot, once */
     v.addEventListener("playing", function(){ v.classList.add("on"); });
     v.addEventListener("loadeddata", function(){ v.classList.add("on"); });
   });
   /* phones: the clips that are seen together use a lighter version (same frames, same speed, smaller picture); the single big clips stay as they are */
   var LIGHT = innerWidth < 700 && typeof MEDIA_M !== "undefined";
   function load(v){ if(!v.getAttribute("src")){ var k=v.getAttribute("data-m"), src = (LIGHT && MEDIA_M[k]) ? MEDIA_M[k] : MEDIA[k]; if(src) v.src = src; } }
-  function play(v){ load(v); if(reduced){ v.classList.add("on"); return; } var st0 = startOf(v); if(st0 && v.readyState >= 1 && v.currentTime < st0 - .5) { try{ v.currentTime = st0; }catch(e){} } var p = v.play(); if(p && p.catch) p.catch(function(){ v.classList.add("on"); }); }
-  function rewind(v){ var st = startOf(v); try{ if(Math.abs(v.currentTime - st) > .05) v.currentTime = st; }catch(e){} }   /* a clip that has left the screen goes back to its first frame, ready for the next time */
-  function seen(en){ return en.isIntersecting && (en.intersectionRatio >= .4 || (en.rootBounds && en.intersectionRect.height >= en.rootBounds.height*.5)); }
+  function play(v){ load(v); if(reduced){ v.classList.add("on"); return; } var p = v.play(); if(p && p.catch) p.catch(function(){ v.classList.add("on"); }); }
   if(!("IntersectionObserver" in window)){ vids.forEach(play); return; }
-  /* two watchers: one a little ahead of the screen only loads the clip (so it is ready), the other decides when it really plays:
-     only when at least 40% of it is on screen, always from its first frame; when it leaves the screen it stops and goes back to the start */
-  var ioLoad = new IntersectionObserver(function(entries){
-    entries.forEach(function(en){ if(en.isIntersecting){ load(en.target); en.target.preload = "auto"; } });
-  },{rootMargin:"120px 0px",threshold:0});
-  var ioSee = new IntersectionObserver(function(entries){
+  var io = new IntersectionObserver(function(entries){
     entries.forEach(function(en){
       var v = en.target;
-      if(seen(en)){ if(document.body.classList.contains("live") && v.paused) play(v); }
-      else if(!en.isIntersecting){ if(!v.paused) v.pause(); rewind(v); }
+      if(en.isIntersecting){ if(document.body.classList.contains("live")) play(v); else load(v); }
+      else if(!v.paused){ v.pause(); }          /* it stops out of view and picks up from the same point when it comes back */
     });
-  },{threshold:[0,.1,.2,.3,.4,.5,.6]});
-  vids.forEach(function(v){ ioLoad.observe(v); ioSee.observe(v); });
+  },{rootMargin:"120px 0px",threshold:0.05});
+  vids.forEach(function(v){ io.observe(v); });
   window.__startClips = function(){
-    vids.forEach(function(v){ var r = v.getBoundingClientRect(), h = Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
-      if(r.height > 0 && (h/r.height >= .4 || h >= innerHeight*.5) && v.paused) play(v); });
+    vids.forEach(function(v){ var r = v.getBoundingClientRect(); if(r.bottom > -120 && r.top < innerHeight + 120) play(v); });
   };
 })();
 
