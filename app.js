@@ -24,7 +24,7 @@ en:{
  thesys_meta:"Thesis short film, 2025",
  thesys_p:"A sci-fi thesis short film, made entirely with AI. Written, directed and performed by me. My first AI project, made over six months during my studies. 15'25\", audio mixed in 5.1.",
  fig_allgens:"generations", fig_spent:"spent", fig_ofvideo:"of them video",
- bio_p:"Hi! I'm Alessandro Panichi. I started out as a sound engineer in 2015 and then became passionate about the creative process behind AI content production. I graduated in Cinema and Audiovisual Art and Technology from the Civica Scuola di Cinema Luchino Visconti in Milan, specializing in Sound. My thesis is THESYS, a 15-minute sci-fi short film made entirely with AI. I'm looking for a passionate team where I can keep improving.",
+ bio_p:"Hi! I'm Alessandro Panichi. I started out as a sound engineer in 2015 and then became passionate about the creative process behind AI content production. I graduated in Cinema and Audiovisual Art and Technology from the Civica Scuola di Cinema Luchino Visconti in Milan, specializing in Sound. My thesis is THESYS, a 15-minute sci-fi short film made entirely with AI. I'm looking for a passionate team to keep improving with.",
  secret_h:"Confidential project", secret_meta:"Commissioned by Siemens", secret_seal:"Viewable on request",
  secret_p:"A short film commissioned by Siemens. Viewable only with written authorization.",
  fig_images:"generated images", fig_gens:"video generations", fig_shots:"final shots", fig_hours:"hours of work",
@@ -79,7 +79,7 @@ it:{
  thesys_meta:"Cortometraggio di tesi, 2025",
  thesys_p:"Cortometraggio di tesi di fantascienza, realizzato interamente con l'intelligenza artificiale. Scritto, diretto e interpretato da me. Il mio primo lavoro con l'AI, realizzato in sei mesi durante gli studi. 15'25\", mix audio in 5.1.",
  fig_allgens:"generazioni", fig_spent:"di spesa", fig_ofvideo:"di cui video",
- bio_p:"Ciao! Sono Alessandro Panichi. Ho iniziato come fonico nel 2015 e mi sono appassionato al processo creativo che sta dietro alla produzione di contenuti con l'AI. Mi sono diplomato in Arte e Tecnologia del Cinema e dell'Audiovisivo alla Civica Scuola di Cinema Luchino Visconti di Milano, con specializzazione in Suono. La mia tesi è THESYS, un cortometraggio di fantascienza di 15 minuti realizzato interamente con l'AI. Cerco una squadra appassionata in cui continuare a migliorare.",
+ bio_p:"Ciao! Sono Alessandro Panichi. Ho iniziato come fonico nel 2015 e mi sono appassionato al processo creativo che sta dietro alla produzione di contenuti con l'AI. Mi sono diplomato in Arte e Tecnologia del Cinema e dell'Audiovisivo alla Civica Scuola di Cinema Luchino Visconti di Milano, con specializzazione in Suono. La mia tesi è THESYS, un cortometraggio di fantascienza di 15 minuti realizzato interamente con l'AI. Cerco una squadra appassionata con cui continuare a migliorare.",
  secret_h:"Progetto riservato", secret_meta:"Commissionato da Siemens", secret_seal:"Visibile su richiesta",
  secret_p:"Un cortometraggio commissionato da Siemens. Visibile solo previa autorizzazione scritta.",
  fig_images:"immagini generate", fig_gens:"generazioni video", fig_shots:"inquadrature finali", fig_hours:"ore di lavoro",
@@ -760,7 +760,7 @@ document.getElementById("soundBtn").addEventListener("click", function(){
 (function(){
   var cv = document.getElementById("smoke"); if(!cv || !cv.getContext) return;
   var ctx = cv.getContext("2d");
-  var feat = null, subF = null, evK = null, evS = null, EVFPS = 120, evLast = -1, K_SUB = .58;   /* share of the low end that sits below 80 Hz counts 41% less */
+  var feat = null, subF = null, evK = null, evS = null, EVFPS = 120, evLast = -1, evLastK = -1, KICK_DELAY = .035, K_SUB = .58;   /* the kick flash comes 35 ms later */   /* share of the low end that sits below 80 Hz counts 41% less */
   try{ if(typeof AUDIOFX !== "undefined" && AUDIOFX && AUDIOFX.data){ var bin = atob(AUDIOFX.data); feat = new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) feat[i] = bin.charCodeAt(i); } }catch(e){ feat = null; }
   try{ if(typeof AUDIOFX !== "undefined" && AUDIOFX && AUDIOFX.subr){ var b3 = atob(AUDIOFX.subr); subF = new Uint8Array(b3.length); for(var j3=0;j3<b3.length;j3++) subF[j3] = b3.charCodeAt(j3); } }catch(e){ subF = null; }   /* per frame: how much of the low end is below 80 Hz (0..1) */
   /* kick and snare hits, found in the audio with their exact times (120 per second): the snare was located through its tonic (about 420 Hz, with the noise of the crack) */
@@ -805,10 +805,12 @@ document.getElementById("soundBtn").addEventListener("click", function(){
       if(k >= 0 && k < AUDIOFX.n){
         var o = k*4, kev = 0, sev = 0, rs = subF && k < subF.length ? subF[k]/255 : 0;
         if(evK){
-          var ie = Math.floor(tt * EVFPS);
+          var ie = Math.floor(tt * EVFPS), ik = Math.floor((tt - KICK_DELAY) * EVFPS);
           if(ie < evLast || ie - evLast > EVFPS) evLast = ie - 1;           /* a seek, a loop or a long pause: do not replay old hits */
-          for(var q = evLast + 1; q <= ie && q < evK.length; q++){ if(evK[q] > kev) kev = evK[q]; if(evS[q] > sev) sev = evS[q]; }
-          evLast = ie; kev = kev/255 * (1 - K_SUB*rs); sev /= 255;
+          if(ik < evLastK || ik - evLastK > EVFPS) evLastK = ik - 1;
+          for(var q = evLast + 1; q <= ie && q < evS.length; q++){ if(evS[q] > sev) sev = evS[q]; }
+          for(var q2 = evLastK + 1; q2 <= ik && q2 < evK.length; q2++){ if(evK[q2] > kev) kev = evK[q2]; }
+          evLast = ie; evLastK = ik; kev = kev/255 * (1 - K_SUB*rs); sev /= 255;
         }
         return {a: .45*feat[o]/255 + .35*feat[o+1]/255 + .20*feat[o+2]/255, an: BASS_W*feat[o]/255*(1 - K_SUB*rs) + .35*feat[o+1]/255 + .20*feat[o+2]/255, f: feat[o+3]/255, kev: kev, sev: sev, hasEv: !!evK, on: true};
       }
