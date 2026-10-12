@@ -594,7 +594,15 @@ function startSound(){
         var srcN = actx.createMediaElementSource(audioEl);
         shelf = actx.createBiquadFilter(); shelf.type = "highshelf"; shelf.frequency.value = SHELF_HZ; shelf.gain.value = shelfTarget();
         songProbe = actx.createAnalyser(); songProbe.fftSize = 2048;
-        srcN.connect(shelf); shelf.connect(songProbe); songProbe.connect(musicGain); routed = true;
+        var lowN = null;
+        if(innerWidth < 700){
+          try{ var cf = lowShelfCoefs(actx.sampleRate, 80, -5, .5); lowN = actx.createIIRFilter(cf.ff, cf.fb); }
+          catch(e1){ try{   /* no IIR filter in this browser: two softer shelves one octave apart do almost the same job */
+            var l1 = actx.createBiquadFilter(); l1.type = "lowshelf"; l1.frequency.value = 55; l1.gain.value = -2.5;
+            var l2 = actx.createBiquadFilter(); l2.type = "lowshelf"; l2.frequency.value = 125; l2.gain.value = -2.5; l1.connect(l2); lowN = {__in: l1, __out: l2}; }catch(e2){ lowN = null; } }
+        }
+        if(lowN){ var li = lowN.__in || lowN, lo = lowN.__out || lowN; srcN.connect(li); lo.connect(shelf); } else srcN.connect(shelf);
+        shelf.connect(songProbe); songProbe.connect(musicGain); routed = true;
       }catch(e){ routed = false; shelf = null; }
       if(!routed){ audioEl.volume = .9; }
       songRouted = routed; songReleased = false;
@@ -607,6 +615,13 @@ function startSound(){
     soundStarted = true; soundOn = true;
   }catch(e){ soundOn = false; }
   updateSoundLabel();
+}
+/* phones: a gentle low shelf on the song, 80 Hz, -5 dB. The built-in shelf has a fixed, steep slope (S = 1); this one is built from the audio-EQ cookbook with
+   a softer slope (S = .5), so the bass comes down gradually over a wide range instead of in a step */
+function lowShelfCoefs(fs, f0, gainDb, S){
+  var A = Math.pow(10, gainDb/40), w0 = 2*Math.PI*f0/fs, c = Math.cos(w0), sn = Math.sin(w0), sq = 2*Math.sqrt(A)*(sn/2*Math.sqrt((A + 1/A)*(1/S - 1) + 2));
+  var b0 = A*((A+1) - (A-1)*c + sq), b1 = 2*A*((A-1) - (A+1)*c), b2 = A*((A+1) - (A-1)*c - sq), a0 = (A+1) + (A-1)*c + sq, a1 = -2*((A-1) + (A+1)*c), a2 = (A+1) + (A-1)*c - sq;
+  return {ff:[b0/a0, b1/a0, b2/a0], fb:[1, a1/a0, a2/a0]};
 }
 var shelf = null, songProbe = null, SHELF_HZ = 2500, SHELF_DB = innerWidth < 700 ? -6 : -12, songRouted = false, songReleased = true;
 /* the song starts from its first second exactly as the page begins to form */
