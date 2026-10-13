@@ -24,7 +24,7 @@ en:{
  thesys_meta:"Thesis short film, 2025",
  thesys_p:"A sci-fi thesis short film, made entirely with AI. Written, directed and performed by me. My first AI project, made over six months during my studies. 15'25\", audio mixed in 5.1.",
  fig_allgens:"generations", fig_spent:"spent", fig_ofvideo:"of them video",
- bio_p:"Hi! I'm Alessandro Panichi. I started out as a sound engineer in 2015 and then became passionate about the creative process behind AI content production too. I graduated in Cinema and Audiovisual Art and Technology from the Civica Scuola di Cinema Luchino Visconti in Milan, specializing in Sound. My thesis is THESYS, a 15-minute sci-fi short film made entirely with AI. I'm looking for a passionate team to keep improving with.",
+ bio_p:"Hi! I'm Alessandro Panichi. I started out as a sound engineer in 2015 and then became passionate about the creative process behind AI content production too. I graduated in Cinema and Audiovisual Art and Technology from the Civica Scuola di Cinema Luchino Visconti in Milan, specializing in Sound. My thesis is THESYS, a 15-minute sci-fi short film made entirely with AI.",
  secret_h:"Confidential project", secret_meta:"Commissioned by Siemens", secret_seal:"Viewable on request",
  secret_p:"A short film commissioned by Siemens. Viewable only with written authorization.",
  fig_images:"generated images", fig_gens:"video generations", fig_shots:"final shots", fig_hours:"hours of work",
@@ -79,7 +79,7 @@ it:{
  thesys_meta:"Cortometraggio di tesi, 2025",
  thesys_p:"Cortometraggio di tesi di fantascienza, realizzato interamente con l'intelligenza artificiale. Scritto, diretto e interpretato da me. Il mio primo lavoro con l'AI, realizzato in sei mesi durante gli studi. 15'25\", mix audio in 5.1.",
  fig_allgens:"generazioni", fig_spent:"di spesa", fig_ofvideo:"di cui video",
- bio_p:"Ciao! Sono Alessandro Panichi. Ho iniziato come fonico nel 2015 e poi mi sono appassionato anche al processo creativo che sta dietro alla produzione di contenuti con l'AI. Mi sono diplomato in Arte e Tecnologia del Cinema e dell'Audiovisivo alla Civica Scuola di Cinema Luchino Visconti di Milano, con specializzazione in Suono. La mia tesi è THESYS, un cortometraggio di fantascienza di 15 minuti realizzato interamente con l'AI. Cerco una squadra appassionata con cui continuare a migliorare.",
+ bio_p:"Ciao! Sono Alessandro Panichi. Ho iniziato come fonico nel 2015 e poi mi sono appassionato anche al processo creativo che sta dietro alla produzione di contenuti con l'AI. Mi sono diplomato in Arte e Tecnologia del Cinema e dell'Audiovisivo alla Civica Scuola di Cinema Luchino Visconti di Milano, con specializzazione in Suono. La mia tesi è THESYS, un cortometraggio di fantascienza di 15 minuti realizzato interamente con l'AI.",
  secret_h:"Progetto riservato", secret_meta:"Commissionato da Siemens", secret_seal:"Visibile su richiesta",
  secret_p:"Un cortometraggio commissionato da Siemens. Visibile solo previa autorizzazione scritta.",
  fig_images:"immagini generate", fig_gens:"generazioni video", fig_shots:"inquadrature finali", fig_hours:"ore di lavoro",
@@ -795,7 +795,7 @@ document.getElementById("soundBtn").addEventListener("click", function(){
   var W = 0, H = 0;
   function size(){ var div = innerWidth < 700 ? 5 : 4; W = cv.width = Math.max(160, Math.round(innerWidth/div)); H = cv.height = Math.max(160, Math.round(innerHeight/div)); }
   size(); addEventListener("resize", size);
-  var ZB_A = .07, zb = null, zbx = null, DEPTH_FADE = .7, SMOKE_BASE = innerWidth < 700 ? .12 : .30, K_SWELL = innerWidth < 700 ? .18 : .12, K_KICK = innerWidth < 700 ? .042 : .053, K_SNARE = .28, BASS_W = innerWidth < 700 ? .189 : .216, ef = 0, es = 0, es0 = 0, cs = 0, hit = 0, sh = 0, amp = 0, pulse = 0, ax = 0, ay = 0, bx = 0, by = 0, cx = 0, cy = 0, t = 0, last = performance.now(), running = false;
+  var ZB_A = .07, zb = null, zbx = null, DEPTH_FADE = .7, SMOKE_BASE = innerWidth < 700 ? .12 : .30, K_SWELL = innerWidth < 700 ? .144 : .12, K_KICK = innerWidth < 700 ? .0336 : .053, K_SNARE = innerWidth < 700 ? .224 : .28,   /* phones: everything that lights the smoke up with the music is 20% lower (x .8 of .18 / .042 / .28) */ BASS_W = innerWidth < 700 ? .189 : .216, ef = 0, es = 0, es0 = 0, cs = 0, hit = 0, sh = 0, amp = 0, pulse = 0, ax = 0, ay = 0, bx = 0, by = 0, cx = 0, cy = 0, t = 0, last = performance.now(), running = false;
   /* what the player really hears is a little behind the position of the audio element (the sound still has to go out of the device): the light waits for it */
   function audLat(){ var l = 0; try{ if(actx) l = (actx.baseLatency || 0) + (actx.outputLatency || 0); }catch(e){} return Math.max(.03, Math.min(.4, l + .02)); }
   function level(){
