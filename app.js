@@ -178,6 +178,8 @@ document.querySelectorAll(".lang button").forEach(function(b){
   var LIGHT = innerWidth < 700 && typeof MEDIA_M !== "undefined";
   /* iPhone/iPad: Safari can refuse or stall a video (Low Power Mode, resource limits), and a clip is hidden until it plays, so the box would stay empty */
   var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  function isHero(v){ return !!(v.closest && v.closest(".hero-bg")); }   /* the black hole plays, pauses and swaps its two layers by itself (code below) */
+  var UNLOAD = IOS || innerWidth < 700;   /* phones: a clip that stays far away is let go, so the phone is not left holding dozens of decoders */
   function load(v){ if(!v.getAttribute("src")){ var k=v.getAttribute("data-m"), src = (LIGHT && MEDIA_M[k]) ? MEDIA_M[k] : MEDIA[k]; if(src){ v.src = src; if(IOS) v.classList.add("on"); } } }   /* on iOS the still frame is shown at once */
   function play(v){
     load(v); if(reduced){ v.classList.add("on"); return; }
@@ -188,13 +190,13 @@ document.querySelectorAll(".lang button").forEach(function(b){
   function retryVisible(){
     if(!document.body.classList.contains("live")) return;
     vids.forEach(function(v){
-      if(!v.paused || !v.getAttribute("src")) return;
+      if(isHero(v) || !v.paused || !v.getAttribute("src")) return;
       var r = v.getBoundingClientRect(); if(!(r.height > 0 && r.bottom > 0 && r.top < innerHeight)) return;
       var p = v.play(); if(p && p.catch) p.catch(function(){});
     });
   }
   ["touchend", "click"].forEach(function(t){ document.addEventListener(t, retryVisible, {passive:true}); });
-  function scheduleUnload(v){   /* iOS only: a clip that stays far away is let go, so Safari is not left holding dozens of decoders */
+  function scheduleUnload(v){   /* phones: a clip that stays far away is let go (it keeps its place and picks up from it) */
     clearTimeout(v.__ut);
     v.__ut = setTimeout(function(){
       if(!v.getAttribute("src")) return;
@@ -202,17 +204,18 @@ document.querySelectorAll(".lang button").forEach(function(b){
       v.__resume = v.currentTime; v.removeAttribute("src"); try{ v.load(); }catch(e){}
     }, 4000);
   }
-  if(!("IntersectionObserver" in window)){ vids.forEach(play); return; }
+  if(!("IntersectionObserver" in window)){ vids.forEach(function(v){ if(!isHero(v)) play(v); }); return; }
   var io = new IntersectionObserver(function(entries){
     entries.forEach(function(en){
       var v = en.target;
+      if(isHero(v)) return;
       if(en.isIntersecting){ clearTimeout(v.__ut); if(document.body.classList.contains("live")) play(v); else load(v); }
-      else { if(!v.paused) v.pause(); if(IOS) scheduleUnload(v); }          /* it stops out of view and picks up from the same point when it comes back */
+      else { if(!v.paused) v.pause(); if(UNLOAD) scheduleUnload(v); }          /* it stops out of view and picks up from the same point when it comes back */
     });
   },{rootMargin:"120px 0px",threshold:0.05});
   vids.forEach(function(v){ io.observe(v); });
   window.__startClips = function(){
-    vids.forEach(function(v){ var r = v.getBoundingClientRect(); if(r.bottom > -120 && r.top < innerHeight + 120) play(v); });
+    vids.forEach(function(v){ if(isHero(v)) return; var r = v.getBoundingClientRect(); if(r.bottom > -120 && r.top < innerHeight + 120) play(v); });
   };
 })();
 
@@ -541,15 +544,22 @@ document.querySelectorAll(".lang button").forEach(function(b){
 (function(){
   var bg = document.querySelector(".hero-bg"); if(!bg) return;
   var A = bg.querySelector("video[data-m]"), B = bg.querySelector("video.xf"); if(!A || !B) return;
-  var X = 1.5, cur = A, nxt = B, fading = false;
+  var X = 1.5, cur = A, nxt = B, fading = false, lastTry = 0;
+  var PH = innerWidth < 700;   /* phones: the second layer is loaded only a few seconds before the fade and let go right after, so one decoder is held most of the time */
   A.loop = false;
+  function srcOf(v){ var k = v.getAttribute("data-m"); return (PH && typeof MEDIA_M !== "undefined" && MEDIA_M[k]) ? MEDIA_M[k] : MEDIA[k]; }
+  if(!A.getAttribute("src")){ var s0 = srcOf(A); if(s0) A.src = s0; }
+  function arm(v, src){ v.src = src; try{ v.load(); }catch(e){} v.addEventListener("loadeddata", function(){ prime(v); }, {once:true}); }
+  function release(v){ try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){} }
   function visible(){ var r = bg.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; }
   function prime(v){ try{ v.pause(); v.currentTime = 0; }catch(e){} }
   function step(){
-    if(!B.getAttribute("src") && A.currentSrc){ B.src = A.currentSrc; B.load(); B.addEventListener("loadeddata", function(){ prime(B); }, {once:true}); }
+    if(!PH && !B.getAttribute("src") && A.currentSrc){ arm(B, A.currentSrc); }
     if(!visible()){ if(!cur.paused) cur.pause(); if(!nxt.paused && fading) nxt.pause(); requestAnimationFrame(step); return; }
-    if(cur.paused && !cur.ended && cur.readyState > 1 && document.body.classList.contains("live") && !reduced){ var p0 = cur.play(); if(p0 && p0.catch) p0.catch(function(){}); }
+    var now = performance.now();
+    if(cur.paused && !cur.ended && cur.getAttribute("src") && document.body.classList.contains("live") && !reduced && now - lastTry > 400){ lastTry = now; var p0 = cur.play(); if(p0 && p0.catch) p0.catch(function(){}); }
     var dur = cur.duration;
+    if(PH && dur && !fading && !nxt.getAttribute("src") && cur.currentSrc && cur.currentTime >= dur - X - 3.5){ arm(nxt, cur.currentSrc); }
     if(dur && !fading && cur.currentTime >= dur - X && nxt.readyState > 1){
       fading = true; nxt.style.zIndex = 2; cur.style.zIndex = 1; nxt.style.opacity = 0;
       var p = nxt.play(); if(p && p.catch) p.catch(function(){});
@@ -558,7 +568,7 @@ document.querySelectorAll(".lang button").forEach(function(b){
       var k = Math.min(1, Math.max(0, (cur.currentTime - (dur - X))/X));
       if(cur.ended) k = 1;
       nxt.style.opacity = k.toFixed(3); cur.style.opacity = 1;
-      if(k >= 1){ cur.style.opacity = 0; prime(cur); var tmp = cur; cur = nxt; nxt = tmp; nxt.style.opacity = 0; fading = false; }
+      if(k >= 1){ cur.style.opacity = 0; if(PH) release(cur); else prime(cur); var tmp = cur; cur = nxt; nxt = tmp; nxt.style.opacity = 0; fading = false; }
     } else if(cur.classList.contains("on") || cur === B){ cur.style.opacity = 1; }
     requestAnimationFrame(step);
   }
@@ -1073,7 +1083,7 @@ if(/[?&]debug(=|&|$)/.test(location.search)){
       var L = [];
       L.push("UA: " + navigator.userAgent.replace(/Mozilla\/5.0 /, "").slice(0, 110));
       L.push("schermo " + innerWidth + "x" + innerHeight + " @" + (window.devicePixelRatio || 1) + " | scroll " + Math.round(scrollY) + " | riduci movimento: " + (reduced ? "SI" : "no") + " | lingua: " + lang);
-      L.push("versione: 21-ott-2026, reel con occhio | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.body.classList.contains("glass-in-smoke") ? "attivo" : "no"));
+      L.push("versione: 21-ott-2026 (b), buco nero separato | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.body.classList.contains("glass-in-smoke") ? "attivo" : "no"));
       var n = 0;
       Array.prototype.forEach.call(document.querySelectorAll("video[data-m]"), function(v){
         var r = v.getBoundingClientRect(), vis = r.height > 0 && r.bottom > 0 && r.top < innerHeight;
