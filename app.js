@@ -963,20 +963,7 @@ function closeGate(cross){
 }
 async function begin(withSound){
   if(withSound){ startSound(); try{ if(actx && actx.state === "suspended") await actx.resume(); }catch(e){} }
-  if(reduced){ closeGate(); return; }
-  gate.classList.add("running");
-  await wait(360);   /* the ring fades in over .3 s: the 3 appears only when the ring is fully there, so the first count is as long as the other two */
-  var seq = [3,2,1], STEP = 1000, t0 = performance.now() + 30;
-  await waitUntil(t0); t0 = performance.now();   /* every change is timed from the moment the 3 really appears */
-  for(var i=0;i<seq.length;i++){
-    count.textContent = seq[i]; FX.tick();
-    sweep.classList.remove("go"); void sweep.offsetWidth; sweep.classList.add("go");
-    await waitUntil(t0 + (i + 1)*STEP);
-  }
-  /* zero: no number and no beep. The ring stays, the hand keeps turning while slowing down, and the page crossfades in underneath over one second */
-  count.textContent = "";
-  sweep.classList.remove("go"); void sweep.offsetWidth; sweep.classList.add("out");
-  closeGate(true);
+  closeGate();   /* no countdown any more: the page opens at once (the countdown now opens the reel) */
 }
 document.getElementById("play").addEventListener("click", function(){
   gate.classList.add("choose");
@@ -1083,7 +1070,7 @@ if(/[?&]debug(=|&|$)/.test(location.search)){
       var L = [];
       L.push("UA: " + navigator.userAgent.replace(/Mozilla\/5.0 /, "").slice(0, 110));
       L.push("schermo " + innerWidth + "x" + innerHeight + " @" + (window.devicePixelRatio || 1) + " | scroll " + Math.round(scrollY) + " | riduci movimento: " + (reduced ? "SI" : "no") + " | lingua: " + lang);
-      L.push("versione: 21-ott-2026 (b), buco nero separato | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.body.classList.contains("glass-in-smoke") ? "attivo" : "no"));
+      L.push("versione: 22-ott-2026, senza conto iniziale | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.body.classList.contains("glass-in-smoke") ? "attivo" : "no"));
       var n = 0;
       Array.prototype.forEach.call(document.querySelectorAll("video[data-m]"), function(v){
         var r = v.getBoundingClientRect(), vis = r.height > 0 && r.bottom > 0 && r.top < innerHeight;
