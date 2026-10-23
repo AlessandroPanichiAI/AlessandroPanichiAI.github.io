@@ -164,7 +164,7 @@ document.querySelectorAll(".lang button").forEach(function(b){
   function startOf(v){ return START_AT[v.getAttribute("data-m")] || 0; }
   vids.forEach(function(v){
     var k = v.getAttribute("data-m");
-    if(POSTERS[k]) v.poster = POSTERS[k];
+    if(POSTERS[k]) v.__poster = POSTERS[k];   /* the still frame is fetched only when the clip comes near (see below) */
     v.muted = true; v.setAttribute("muted","");
     v.addEventListener("loadedmetadata", function(){
       var t = (v.__resume != null) ? v.__resume : (!v.__st ? startOf(v) : 0);   /* first load: the reel opens on its chosen shot; after an unload: back to where it was */
@@ -180,7 +180,7 @@ document.querySelectorAll(".lang button").forEach(function(b){
   var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   function isHero(v){ return !!(v.closest && v.closest(".hero-bg")); }   /* the black hole plays, pauses and swaps its two layers by itself (code below) */
   var UNLOAD = IOS || innerWidth < 700;   /* phones: a clip that stays far away is let go, so the phone is not left holding dozens of decoders */
-  function load(v){ if(!v.getAttribute("src")){ var k=v.getAttribute("data-m"), src = (LIGHT && MEDIA_M[k]) ? MEDIA_M[k] : MEDIA[k]; if(src){ v.src = src; if(IOS) v.classList.add("on"); } } }   /* on iOS the still frame is shown at once */
+  function load(v){ setPoster(v); if(!v.getAttribute("src")){ var k=v.getAttribute("data-m"), src = (LIGHT && MEDIA_M[k]) ? MEDIA_M[k] : MEDIA[k]; if(src){ v.src = src; if(IOS) v.classList.add("on"); } } }   /* on iOS the still frame is shown at once */
   function play(v){
     load(v); if(reduced){ v.classList.add("on"); return; }
     clearTimeout(v.__wd);
@@ -196,6 +196,21 @@ document.querySelectorAll(".lang button").forEach(function(b){
     });
   }
   ["touchend", "click"].forEach(function(t){ document.addEventListener(t, retryVisible, {passive:true}); });
+  /* another tab in front: every playing video stops (black hole included); back on the page, only the ones on screen start again */
+  document.addEventListener("visibilitychange", function(){
+    var all = document.querySelectorAll("video");
+    if(document.hidden){
+      Array.prototype.forEach.call(all, function(v){ if(!v.paused){ v.__tabPaused = true; v.pause(); } });
+      return;
+    }
+    Array.prototype.forEach.call(all, function(v){
+      if(!v.__tabPaused) return;
+      v.__tabPaused = false;
+      var r = v.getBoundingClientRect(); if(!(r.height > 0 && r.bottom > -120 && r.top < innerHeight + 120)) return;
+      if(isHero(v) || !v.hasAttribute("data-m")){ var p = v.play(); if(p && p.catch) p.catch(function(){}); }
+      else play(v);
+    });
+  });
   function scheduleUnload(v){   /* phones: a clip that stays far away is let go (it keeps its place and picks up from it) */
     clearTimeout(v.__ut);
     v.__ut = setTimeout(function(){
@@ -204,6 +219,14 @@ document.querySelectorAll(".lang button").forEach(function(b){
       v.__resume = v.currentTime; v.removeAttribute("src"); try{ v.load(); }catch(e){}
     }, 4000);
   }
+  /* still frames: the ones near the top at once, the others when their clip is about two screens away, so the page opens lighter */
+  function setPoster(v){ if(v.__poster && !v.getAttribute("poster")){ v.poster = v.__poster; } }
+  if("IntersectionObserver" in window){
+    var pio = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){ if(en.isIntersecting){ setPoster(en.target); pio.unobserve(en.target); } });
+    }, {rootMargin: "1600px 0px"});
+    vids.forEach(function(v){ if(isHero(v)) setPoster(v); else pio.observe(v); });
+  } else { vids.forEach(setPoster); }
   if(!("IntersectionObserver" in window)){ vids.forEach(function(v){ if(!isHero(v)) play(v); }); return; }
   var io = new IntersectionObserver(function(entries){
     entries.forEach(function(en){
@@ -459,14 +482,17 @@ document.querySelectorAll(".lang button").forEach(function(b){
   tex(0, window.__smokeTex[0]); tex(1, window.__smokeTex[1]); tex(2, window.__smokeTex[2]);
   var U = {}; ["uRes","uT","uReveal","uDens","uA","uB","uC","uR","uN"].forEach(function(n){ U[n] = gl.getUniformLocation(pr, n); });
   gl.uniform1i(U.uA, 0); gl.uniform1i(U.uB, 1); gl.uniform1i(U.uC, 2);
-  var scale = innerWidth < 700 ? .5 : .45, W = 0, H = 0, T = 0, last = 0, running = false, winStart = 0, winFrames = 0;
+  /* the smoke is soft, so its heavy part is drawn at half resolution on each side (a quarter of the pixels) and then enlarged;
+     the blur is defined in screen pixels and the final pass (fine grain, light) stays at full resolution, so the look does not change */
+  var SMOKE_RES = .5;
+  var scale = (innerWidth < 700 ? .5 : .45) * SMOKE_RES, W = 0, H = 0, T = 0, last = 0, running = false, winStart = 0, winFrames = 0;
   var FR = [], rects = new Float32Array(NR*4);
   var MOB = innerWidth < 700;
   var DESK_DENS = 1.12;                                                         /* computer: 20% less than the previous 1.4 */                                                       /* phones: smoke 15% less dense */
   var SLOW = innerWidth < 820 || !!(window.matchMedia && matchMedia("(pointer:coarse)").matches);   /* phones and tablets: lighter drawing */
   var MINDT = SLOW ? 40 : 31, goT = 0, bad = 0, rn = 0, rDirty = true, rStamp = 0, gain = 1, gainT = 1, lastGain = 0, panels = null;
   function frames(){ FR = document.querySelectorAll(".hero-panel, .reel-frame, .proj, #bio .glass"); }
-  function size(){ MOB = innerWidth < 700; rDirty = true; var px = innerWidth*innerHeight*scale*scale; if(px > 450000) scale *= Math.sqrt(450000/px);
+  function size(){ MOB = innerWidth < 700; rDirty = true; var px = innerWidth*innerHeight*scale*scale, cap = 450000*SMOKE_RES*SMOKE_RES; if(px > cap) scale *= Math.sqrt(cap/px);
     W = Math.max(2, Math.round(innerWidth*scale)); H = Math.max(2, Math.round(innerHeight*scale));
     var dpr = Math.min(3, window.devicePixelRatio || 1), ds = Math.min(dpr, Math.sqrt((SLOW ? 1150000 : 5400000)/(innerWidth*innerHeight)));
     DW = Math.max(2, Math.round(innerWidth*ds)); DH = Math.max(2, Math.round(innerHeight*ds));
@@ -551,7 +577,8 @@ document.querySelectorAll(".lang button").forEach(function(b){
   if(!A.getAttribute("src")){ var s0 = srcOf(A); if(s0) A.src = s0; }
   function arm(v, src){ v.src = src; try{ v.load(); }catch(e){} v.addEventListener("loadeddata", function(){ prime(v); }, {once:true}); }
   function release(v){ try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){} }
-  function visible(){ var r = bg.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; }
+  function visible(){ var r = bg.getBoundingClientRect(); if(document.hidden) return false;   /* another tab in front: the black hole rests too */
+    return r.bottom > 0 && r.top < innerHeight; }
   function prime(v){ try{ v.pause(); v.currentTime = 0; }catch(e){} }
   function step(){
     if(!PH && !B.getAttribute("src") && A.currentSrc){ arm(B, A.currentSrc); }
@@ -1070,7 +1097,7 @@ if(/[?&]debug(=|&|$)/.test(location.search)){
       var L = [];
       L.push("UA: " + navigator.userAgent.replace(/Mozilla\/5.0 /, "").slice(0, 110));
       L.push("schermo " + innerWidth + "x" + innerHeight + " @" + (window.devicePixelRatio || 1) + " | scroll " + Math.round(scrollY) + " | riduci movimento: " + (reduced ? "SI" : "no") + " | lingua: " + lang);
-      L.push("versione: 22-ott-2026, senza conto iniziale | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.body.classList.contains("glass-in-smoke") ? "attivo" : "no"));
+      L.push("versione: 23-ott-2026, passo 4: locandine quando servono | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.body.classList.contains("glass-in-smoke") ? "attivo" : "no"));
       var n = 0;
       Array.prototype.forEach.call(document.querySelectorAll("video[data-m]"), function(v){
         var r = v.getBoundingClientRect(), vis = r.height > 0 && r.bottom > 0 && r.top < innerHeight;
