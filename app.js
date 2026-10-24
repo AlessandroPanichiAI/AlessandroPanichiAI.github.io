@@ -178,7 +178,8 @@ document.querySelectorAll(".lang button").forEach(function(b){
   var LIGHT = innerWidth < 700 && typeof MEDIA_M !== "undefined";
   /* iPhone/iPad: Safari can refuse or stall a video (Low Power Mode, resource limits), and a clip is hidden until it plays, so the box would stay empty */
   var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  function isHero(v){ return !!(v.closest && v.closest(".hero-bg")); }   /* the black hole plays, pauses and swaps its two layers by itself (code below) */
+  function isHero(v){ return !!(v.closest && v.closest(".hero-bg")); }
+  window.__preload = function(v){ if(v){ v.preload = "metadata"; load(v); } };   /* the entrance asks for the reel's header and first frame while the play button is being drawn (not the whole file) */   /* the black hole plays, pauses and swaps its two layers by itself (code below) */
   var UNLOAD = IOS || innerWidth < 700;   /* phones: a clip that stays far away is let go, so the phone is not left holding dozens of decoders */
   function load(v){ setPoster(v); if(!v.getAttribute("src")){ var k=v.getAttribute("data-m"), src = (LIGHT && MEDIA_M[k]) ? MEDIA_M[k] : MEDIA[k]; if(src){ v.src = src; if(IOS) v.classList.add("on"); } } }   /* on iOS the still frame is shown at once */
   function play(v){
@@ -490,7 +491,7 @@ document.querySelectorAll(".lang button").forEach(function(b){
   var MOB = innerWidth < 700;
   var DESK_DENS = 1.12;                                                         /* computer: 20% less than the previous 1.4 */                                                       /* phones: smoke 15% less dense */
   var SLOW = innerWidth < 820 || !!(window.matchMedia && matchMedia("(pointer:coarse)").matches);   /* phones and tablets: lighter drawing */
-  var MINDT = SLOW ? 40 : 31, goT = 0, bad = 0, rn = 0, rDirty = true, rStamp = 0, gain = 1, gainT = 1, lastGain = 0, panels = null;
+  var MINDT = SLOW ? 40 : 31, SLOWDT = Math.round(MINDT * 1.6), SCALE_MIN = .25 * SMOKE_RES, goT = 0, bad = 0, rn = 0, rDirty = true, rStamp = 0, gain = 1, gainT = 1, lastGain = 0, panels = null;
   function frames(){ FR = document.querySelectorAll(".hero-panel, .reel-frame, .proj, #bio .glass"); }
   function size(){ MOB = innerWidth < 700; rDirty = true; var px = innerWidth*innerHeight*scale*scale, cap = 450000*SMOKE_RES*SMOKE_RES; if(px > cap) scale *= Math.sqrt(cap/px);
     W = Math.max(2, Math.round(innerWidth*scale)); H = Math.max(2, Math.round(innerHeight*scale));
@@ -536,7 +537,19 @@ document.querySelectorAll(".lang button").forEach(function(b){
     var SA = Math.sin(118*Math.PI/180), CA = Math.cos(118*Math.PI/180); gl.uniform3f(PU.uSh, SA, CA, Math.abs(DW*SA) + Math.abs(DH*CA));
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
-  function stop(){ running = false; window.__glSmoke = false; document.documentElement.classList.remove("gl-smoke"); document.documentElement.classList.remove("glass-in-smoke");
+  function smokeInfo(t){ window.__smokeInfo = t; if(window.console) console.info("[fumo] " + t); }
+  function videoStress(){   /* share of frames the playing videos had to skip since the last check */
+    var dd = 0, dt = 0;
+    Array.prototype.forEach.call(document.querySelectorAll("video"), function(v){
+      if(!v.getVideoPlaybackQuality) return;
+      var q = v.getVideoPlaybackQuality(), pd = v.__qd || 0, pt = v.__qt || 0;
+      if(q.totalVideoFrames < pt){ pd = 0; pt = 0; }   /* the clip was reloaded: its counters started again */
+      if(!v.paused){ dd += q.droppedVideoFrames - pd; dt += q.totalVideoFrames - pt; }
+      v.__qd = q.droppedVideoFrames; v.__qt = q.totalVideoFrames;
+    });
+    return dt >= 48 && dd / dt > .10;
+  }
+  function stop(){ window.__smokeInfo = "fermo (fumo di riserva)"; running = false; window.__glSmoke = false; document.documentElement.classList.remove("gl-smoke"); document.documentElement.classList.remove("glass-in-smoke");
     var q = window.__fallbackLayers; window.__fallbackLayers = null; if(q) q.forEach(function(f){ f(); });
     if(window.console) console.info("[fumo] WebGL fermato perche' il dispositivo e' troppo lento: uso il fumo di riserva"); }
   function frame(now){
@@ -545,9 +558,15 @@ document.querySelectorAll(".lang button").forEach(function(b){
     else {
       if(!winStart) winStart = now; winFrames++;
       if(now - winStart > 2000){ var avg = (now - winStart)/winFrames; winStart = now; winFrames = 0;
-        if(avg > (MOB ? 34 : 50)){
-          if(scale > .28){ scale = Math.max(.25, scale*.8); size(); bad = 0; if(window.console) console.info("[fumo] risoluzione ridotta a " + scale.toFixed(2) + " (fotogramma medio " + avg.toFixed(0) + " ms)"); }
+        var vs = videoStress();
+        /* the device is struggling when the page draws fewer than ~30 frames a second (phones; ~20 on computers),
+           or when the playing videos have to skip more than 10% of their frames. Then, one step every 2 s:
+           smaller smoke, then smoke drawn less often, and only as a last resort the still smoke. The clips are never touched. */
+        if(avg > (MOB ? 34 : 50) || vs){
+          if(scale > SCALE_MIN * 1.12){ scale = Math.max(SCALE_MIN, scale*.8); size(); bad = 0; smokeInfo("risoluzione " + scale.toFixed(3)); }
+          else if(MINDT < SLOWDT){ MINDT = SLOWDT; bad = 0; smokeInfo("risoluzione " + scale.toFixed(3) + ", meno fotogrammi"); }
           else if(avg > (MOB ? 50 : 80) && ++bad >= 2){ stop(); return; }
+          if(window.console) console.info("[fumo] fotogramma medio " + avg.toFixed(0) + " ms" + (vs ? ", i video saltano fotogrammi" : ""));
         } else bad = 0;
       } }
     if(now - last >= MINDT){ draw(Math.min(.1, (now - last)/1000)); last = now; }
@@ -574,7 +593,7 @@ document.querySelectorAll(".lang button").forEach(function(b){
   var PH = innerWidth < 700;   /* phones: the second layer is loaded only a few seconds before the fade and let go right after, so one decoder is held most of the time */
   A.loop = false;
   function srcOf(v){ var k = v.getAttribute("data-m"); return (PH && typeof MEDIA_M !== "undefined" && MEDIA_M[k]) ? MEDIA_M[k] : MEDIA[k]; }
-  if(!A.getAttribute("src")){ var s0 = srcOf(A); if(s0) A.src = s0; }
+  if(!A.getAttribute("src")){ var s0 = srcOf(A); if(s0){ A.preload = "auto"; A.src = s0; } }   /* its first seconds load during the entrance */
   function arm(v, src){ v.src = src; try{ v.load(); }catch(e){} v.addEventListener("loadeddata", function(){ prime(v); }, {once:true}); }
   function release(v){ try{ v.pause(); v.removeAttribute("src"); v.load(); }catch(e){} }
   function visible(){ var r = bg.getBoundingClientRect(); if(document.hidden) return false;   /* another tab in front: the black hole rests too */
@@ -663,7 +682,8 @@ function startSound(){
     if(TRACK_SRC){
       /* the song goes through a high shelf: darker at the top of the page, fully open at the bottom.
          If the browser hands back silence from that path, the song restarts straight from the element, unfiltered. */
-      audioEl = new Audio(); audioEl.src = TRACK_SRC; audioEl.loop = true; audioEl.preload = "auto";
+      audioEl = window.__songPre || new Audio(); window.__songPre = null;   /* the entrance already started loading the song */
+      if(!audioEl.getAttribute("src")) audioEl.src = TRACK_SRC; audioEl.loop = true; audioEl.preload = "auto";
       var routed = false;
       try{
         var srcN = actx.createMediaElementSource(audioEl);
@@ -708,10 +728,14 @@ window.__releaseSong = function(){
   if(!songRouted){ audioEl.volume = .9; }
   else { setTimeout(checkSongPath, 4000); setTimeout(checkSongPath, 9000); }
 };
+/* the song's high shelf follows the scroll. Its range is 15% wider than before: 5% darker at the top of the page,
+   and at the bottom, instead of stopping at 0 dB, it opens a touch further (10% of the range brighter).
+   Computers: -12.6 dB at the top, +1.2 dB at the bottom; phones: -6.3 and +0.6 (measured: the song's peaks do not move) */
+var SHELF_TOP = SHELF_DB * 1.05, SHELF_BOTTOM = -SHELF_DB * 0.10;
 function shelfTarget(){
   var max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
   var prog = Math.min(1, Math.max(0, (window.scrollY || 0) / max));
-  return SHELF_DB * (1 - prog);
+  return SHELF_TOP + (SHELF_BOTTOM - SHELF_TOP) * prog;
 }
 addEventListener("scroll", function(){ if(shelf && actx){ shelf.gain.setTargetAtTime(shelfTarget(), actx.currentTime, .25); } }, {passive:true});
 function checkSongPath(){
@@ -988,18 +1012,264 @@ function closeGate(cross){
   setTimeout(function(){ document.body.classList.add("live"); if(window.__startClips) window.__startClips(); }, cross ? 0 : 250);
   setTimeout(function(){ gate.style.display = "none"; }, cross ? 1100 : 1000);
 }
-async function begin(withSound){
-  if(withSound){ startSound(); try{ if(actx && actx.state === "suspended") await actx.resume(); }catch(e){} }
-  closeGate();   /* no countdown any more: the page opens at once (the countdown now opens the reel) */
+/* ======= Entrance =======
+   1. a point draws the play button (circle, then triangle) following the real loading of the essentials:
+      fonts and code, the first seconds of the black hole and the first frame of the reel. About 2 s when everything is already there, at most 6.8 s
+      (then it closes anyway and the rest keeps loading). 2. the button glints like the numbers when they land.
+   3. play: a glass-like beep, the circle splits into the two choice circles, the triangle retracts.
+   4. a choice: a two-note beep, the circles wobble like liquid and sink into the black; 500 ms of black; the page opens. */
+var BEEPS = {};
+(function(){   /* the two beeps are rendered once, offline, from the same recipe as the samples: a short sine and a dark reverb */
+  var OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if(!OAC) return;
+  var SR = 48000, seed = 1;
+  function rnd(){ seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+  function gauss(){ return (rnd() + rnd() + rnd() + rnd() - 2) * 1.2247; }
+  function env(n, att, dec){ var e = new Float32Array(n); for(var i=0;i<n;i++){ var t = i/SR, a = Math.min(1, t/att); e[i] = (0.5 - 0.5*Math.cos(Math.PI*a)) * Math.exp(-t/dec); } return e; }
+  function fadeOut(x, ms){ var m = Math.round(SR*ms/1000); for(var i=0;i<m;i++){ x[x.length - m + i] *= 0.5 + 0.5*Math.cos(Math.PI*i/m); } return x; }
+  function tone(parts){   /* parts: [freq, dur, dec, harmonic2, glide] in sequence, with gaps */
+    var len = 0; parts.forEach(function(q){ len += Math.round(SR*(q[1] + (q[5] || 0))); });
+    var out = new Float32Array(len), o = 0;
+    parts.forEach(function(q){
+      var n = Math.round(SR*q[1]), e = env(n, q[1] < .05 ? .002 : .003, q[2]), ph = 0, x = new Float32Array(n);
+      for(var i=0;i<n;i++){ var t = i/SR, f = q[0] * (1 + (q[4] || 0)*Math.exp(-t/.004)); ph += 2*Math.PI*f/SR; x[i] = (Math.sin(ph) + (q[3] || 0)*Math.sin(2*ph)) * e[i]; }
+      fadeOut(x, 6); out.set(x, o); o += n + Math.round(SR*(q[5] || 0));
+    });
+    return out;
+  }
+  function ir(oc, rt60, dark, pre, sd){
+    seed = sd; var n = Math.round(SR*rt60*1.2), pd = Math.round(SR*pre), b = oc.createBuffer(2, n + pd, SR);
+    var a1 = Math.exp(-2*Math.PI*dark/SR), a2 = Math.exp(-2*Math.PI*dark*1.6/SR);
+    for(var c=0;c<2;c++){ var d = b.getChannelData(c), s1 = 0, s2 = 0, en = 0;
+      for(var i=0;i<n;i++){ var t = i/SR; s1 = (1-a1)*gauss() + a1*s1; s2 = (1-a2)*s1 + a2*s2; var v = s2 * Math.exp(-6.9078*t/rt60) * Math.min(1, t/.04); d[pd + i] = v; en += v*v; }
+      var k = 1/Math.sqrt(en || 1); for(var j=pd;j<n+pd;j++) d[j] *= k; }
+    return b;
+  }
+  function render(name, dry, rt60, dark, pre, wetDb, tail, sd){
+    try{
+      var len = Math.round(SR*tail), oc = new OAC(2, len, SR);
+      var db = oc.createBuffer(1, dry.length, SR); db.getChannelData(0).set(dry);
+      var src = oc.createBufferSource(); src.buffer = db;
+      var cv = oc.createConvolver(); cv.normalize = false; cv.buffer = ir(oc, rt60, dark, pre, sd);
+      var wg = oc.createGain(); wg.gain.value = Math.pow(10, wetDb/20);
+      src.connect(oc.destination); src.connect(cv); cv.connect(wg); wg.connect(oc.destination); src.start(0);
+      var done = function(buf){ var pk = 0, m = Math.round(SR*.3);
+        for(var c=0;c<buf.numberOfChannels;c++){ var d = buf.getChannelData(c); for(var i=0;i<d.length;i++){ if(i >= d.length - m){ var w = (d.length - i)/m; d[i] *= w*w; } var v = Math.abs(d[i]); if(v > pk) pk = v; } }
+        buf.__g = Math.pow(10, -10/20) / (pk || 1);   /* played with its highest peak at -10 dBFS */
+        BEEPS[name] = buf; };
+      var pr = oc.startRendering(); if(pr && pr.then) pr.then(done).catch(function(){}); else oc.oncomplete = function(e){ done(e.renderedBuffer); };
+    }catch(e){}
+  }
+  setTimeout(function(){
+    render("play", tone([[1568, .09, .035, .12]]), 3.6, 2600, .025, -17, 4.2, 3);                       /* bip 1, glass */
+    render("choice", tone([[1320, .055, .03, 0, 0, .025], [1980, .065, .035]]).map(function(v){ return v*.9; }), 3.2, 2200, .03, -18, 4.0, 5);   /* bip 2, two notes a fifth apart */
+  }, 200);
+})();
+function playBeep(name){
+  try{
+    var b = BEEPS[name]; if(!b) return;
+    if(!actx && !buildGraph()) return;
+    if(actx.state === "suspended") actx.resume();
+    var src = actx.createBufferSource(), g = actx.createGain(); src.buffer = b; g.gain.value = b.__g; src.connect(g); g.connect(master); src.start();
+  }catch(e){}
 }
-document.getElementById("play").addEventListener("click", function(){
-  gate.classList.add("choose");
-  setTimeout(function(){ gate.classList.add("ready"); }, 800);   /* clickable once the two choices have settled */
-  ["start","silent"].forEach(function(id){ document.getElementById(id).removeAttribute("tabindex"); });
-  setTimeout(function(){ document.getElementById("start").focus({preventScroll:true}); }, 400);
-});
-document.getElementById("start").addEventListener("click", function(){ begin(true); });
-document.getElementById("silent").addEventListener("click", function(){ begin(false); });
+(function(){
+  var playB = document.getElementById("play"), ring = playB.querySelector(".ring"), svg = playB.querySelector("svg.pl:not(.pl-rim)");
+  var pc = svg.querySelector(".pl-c"), pt = svg.querySelector(".pl-t"), gt = svg.querySelector(".gt"), gs = svg.querySelector(".gs");
+  var tip = svg.querySelector(".tip"), sp = tip.querySelector(".sp"), sh = tip.querySelector(".sh"), core = tip.querySelector(".core"), bloom = tip.querySelector(".bloom"), bloom2 = tip.querySelector(".bloom2");
+  var rs = svg.querySelector(".rs"), rl = Array.prototype.slice.call(rs.querySelectorAll("line"));
+  var split = document.getElementById("split"), halves = [document.getElementById("start"), document.getElementById("silent")];
+  var LC = pc.getTotalLength(), RC = 2*Math.PI*43.5, NS = rl.length;
+  /* ---- the sequence, in this order: 1. a four-pointed star traces the circle with a centrifugal motion (fastest at 50% of the circle, half of that
+     at 25% and 75%); the line it leaves behind is thin and thickens shortly after; 2. closed, the circle turns pale gold and the star goes out at
+     5 o'clock of the second lap; 3. the circle pulses; 4. near the end of the pulse the triangle comes up in a single fade; 5. the shine of the numbers,
+     from left to right, and 0.7 s later the halo: a tight glow and three soft lobes that turn around the play ---- */
+  var segs = Array.prototype.slice.call(svg.querySelectorAll(".pl-seg"));
+  var NSEG = segs.length, WIN = 130, EXIT = 5/12, DRAW = 1250, CAP = 6200, HOLD = .9, PULSE = 800, PLAY_AT = .84, FADE = 1050, GLOW_LAG = 700, EARLY = 600, TRI_EARLY = 100, STAR = 9, SK = .85;   /* SK: the star is 15% smaller than before */
+  var SOL_DELAY = 75, SOL_THICK = 150, W0 = .35, W1 = 1;
+  var TAU_A = 25, TAU_R = 330;   /* the star's glow follows its speed completely: it rises at once (25 ms) and settles with a tail of 330 ms */
+  function g(s){ s = ((s % 1) + 1) % 1; var x = (s - .5)/.25; return 1/(1 + x*x); }   /* speed as a share of the maximum */
+  var N = 8500, MAXS = 1 + EXIT, TT = new Float64Array(N + 1);   /* time as a function of position: the integral of ds / speed */
+  for(var ti = 1; ti <= N; ti++){ TT[ti] = TT[ti-1] + (MAXS/N)/g((ti - .5)/N*MAXS); }
+  var VMAX = TT[6000]/DRAW, TEND = TT[N]/VMAX;   /* the first lap (position 1 = index 6000) lasts DRAW; TEND is when the star reaches 5 o'clock on the second */
+  function tOf(p){ var f = Math.min(N - 1e-6, p/MAXS*N), i = Math.floor(f); return (TT[i] + (TT[i+1] - TT[i])*(f - i))/VMAX; }
+  function sOf(t){ var lo = 0, hi = N, y = t*VMAX; while(hi - lo > 1){ var m = (lo + hi) >> 1; if(TT[m] <= y) lo = m; else hi = m; } var f = (y - TT[lo])/((TT[lo+1] - TT[lo]) || 1); return (lo + f)/N*MAXS; }
+  var tHold = tOf(HOLD);
+  function P(p){ var f = p >= 1 ? p - 1 : p; return pc.getPointAtLength(LC*Math.min(1, Math.max(0, f))); }
+  (function(){ for(var i = 0; i < NS; i++){ var a = pc.getPointAtLength(LC*i/NS), b = pc.getPointAtLength(LC*(i + 1)/NS);   /* the line is drawn as many short pieces so that each can thicken by itself */
+    rl[i].setAttribute("x1", a.x.toFixed(2)); rl[i].setAttribute("y1", a.y.toFixed(2)); rl[i].setAttribute("x2", b.x.toFixed(2)); rl[i].setAttribute("y2", b.y.toFixed(2)); rl[i].style.strokeWidth = W0; } })();
+  var passT = new Float64Array(NS), upto = 0, firstActive = 0, solidDone = false;
+  function smooth(x){ x = Math.max(0, Math.min(1, x)); return x*x*(3 - 2*x); }
+  function lineUpdate(now, sPos){   /* the line the star leaves behind starts thin and, shortly after, thickens up to its full size */
+    var want = Math.min(NS, Math.ceil(Math.min(1, sPos)*NS - 1e-9));
+    for(var i = upto; i < want; i++){ passT[i] = now; rl[i].style.visibility = "visible"; }
+    upto = Math.max(upto, want);
+    for(i = firstActive; i < upto; i++){ var age = now - passT[i], w = W0 + (W1 - W0)*smooth((age - SOL_DELAY)/SOL_THICK); rl[i].style.strokeWidth = w.toFixed(3); if(age >= SOL_DELAY + SOL_THICK && i === firstActive) firstActive++; }
+    if(upto >= NS && firstActive >= NS && !solidDone){ solidDone = true; pc.classList.add("solid"); rs.style.display = "none"; }   /* whole line solid: it becomes the single path again */
+  }
+  /* what "loaded" means: fonts, and the first seconds of the black hole and of the reel (needed whatever the choice).
+     The song is not loaded here: whoever chooses silence would download it for nothing, and the closing animation after "with audio"
+     is enough for its first seconds */
+  var reelV = document.querySelector('video[data-m="reel"]'); if(window.__preload) window.__preload(reelV);
+  function mediaP(m, need, rs){
+    if(!m || m.error) return 1;
+    if(m.readyState >= (rs || 3)) return 1;
+    try{ if(m.buffered && m.buffered.length) return Math.min(1, m.buffered.end(0)/need); }catch(e){}
+    return 0;
+  }
+  function progress(){
+    var f = (document.fonts && document.fonts.status && document.fonts.status !== "loaded") ? 0 : 1;
+    return .2*f + .5*mediaP(document.querySelector(".hero-bg video[data-m]"), 2, 3) + .3*mediaP(reelV, .5, 2);   /* black hole: its first seconds; reel: its first frame */
+  }
+  var T0 = performance.now(), vt = 0, lastF = T0, env = null, closed = false, hist = [];
+  window.__gateLoad = function(){ return {posizione: +(window.__gateS || 0).toFixed(3), caricato: +progress().toFixed(3), secondi: +((performance.now() - T0)/1000).toFixed(1)}; };
+  function at(t){   /* where the star was t ms ago, from its recorded path */
+    for(var i = hist.length - 1; i > 0; i--){ if(hist[i-1].t <= t){ var a = hist[i-1], b = hist[i], f = b.t === a.t ? 0 : (t - a.t)/(b.t - a.t); return {x: a.x + (b.x - a.x)*f, y: a.y + (b.y - a.y)*f}; } }
+    return hist[0];
+  }
+  function tailDraw(now, opac){   /* the comet's tail: as long as the distance covered in the last 130 ms, so it grows with the speed */
+    while(hist.length > 2 && hist[1].t < now - WIN - 40) hist.shift();
+    var pts = []; for(var i = 0; i <= NSEG; i++) pts.push(at(now - WIN*i/NSEG));
+    for(i = 0; i < NSEG; i++){ var sg = segs[i], f = Math.pow(1 - i/NSEG, 1.4)*opac;
+      sg.setAttribute("x1", pts[i].x.toFixed(2)); sg.setAttribute("y1", pts[i].y.toFixed(2)); sg.setAttribute("x2", pts[i+1].x.toFixed(2)); sg.setAttribute("y2", pts[i+1].y.toFixed(2));
+      sg.style.opacity = f.toFixed(3); sg.style.strokeWidth = (.4 + 1.5*(1 - i/NSEG)).toFixed(2); }
+  }
+  function ready(now){ return now - T0 >= CAP || progress() >= .999; }
+  function frame(now){
+    var dt = Math.min(100, Math.max(0, now - lastF)); lastF = now;
+    var wait = !closed && !ready(now);   /* the loading is late: the star waits at 90% of the circle until everything is ready */
+    vt = wait ? Math.min(vt + dt, tHold) : vt + dt;
+    var s = sOf(Math.min(vt, TEND)), q = P(s); window.__gateS = s;
+    lineUpdate(now, s);
+    if(s >= 1 && !closed){ closed = true; playB.classList.add("lit"); }   /* closed: the circle turns pale gold and lights up */
+    var tg = g(s); env = env === null ? tg : env + (tg - env)*(1 - Math.exp(-dt/(tg > env ? TAU_A : TAU_R)));
+    var fade = s <= 1 ? 1 : Math.pow(Math.max(0, 1 - (s - 1)/EXIT), 1.5), B = Math.min(1, env*fade*(s > 1 ? 1 + .25*Math.min(1, (s - 1)/.08) : 1));   /* it goes out at 5 o'clock; on the second lap it gets a small boost */
+    var size = SK*STAR*(.45 + .55*B);
+    tip.setAttribute("transform", "translate(" + q.x.toFixed(2) + " " + q.y.toFixed(2) + ")");
+    sp.setAttribute("transform", "scale(" + size.toFixed(2) + ")"); sh.setAttribute("transform", "scale(" + (size*1.3).toFixed(2) + ")");
+    core.setAttribute("r", (SK*(1.1 + .5*B)).toFixed(2)); bloom.setAttribute("r", (SK*(5 + 4*B)).toFixed(2)); bloom2.setAttribute("r", (SK*(10 + 8*B)).toFixed(2)); tip.style.opacity = B.toFixed(3);
+    hist.push({t: now, x: q.x, y: q.y}); tailDraw(now, B);
+    if(vt < TEND) requestAnimationFrame(frame); else { spent(); if(!solidDone) requestAnimationFrame(finishLine); }
+  }
+  function finishLine(now){ lineUpdate(now, 1); if(!solidDone) requestAnimationFrame(finishLine); }
+  function spent(){
+    tip.style.opacity = 0; segs.forEach(function(sg){ sg.style.opacity = 0; });
+    playB.classList.add("pulse");                                        /* the circle pulses */
+    setTimeout(function(){ pt.classList.add("on"); }, PULSE*PLAY_AT - TRI_EARLY);   /* near the end of the pulse the triangle comes up in a single fade */
+    setTimeout(finish, PULSE*PLAY_AT - TRI_EARLY + FADE - EARLY);                   /* the shine, and all that follows (pressable, halo), comes EARLY ms before the end of the fade */
+  }
+  function finish(){
+    playB.classList.add("drawn", "shine");                               /* it can be pressed now; the shine of the numbers crosses it */
+    setTimeout(function(){ gt.classList.add("glow"); gs.classList.add("on"); }, GLOW_LAG);   /* 0.7 s after the shine starts: the halo */
+  }
+  if(reduced){ pc.classList.add("solid"); rs.style.display = "none"; pt.classList.add("on"); gt.classList.add("glow"); gs.classList.add("on"); playB.classList.add("lit", "drawn"); }
+  else requestAnimationFrame(frame);
+
+  /* where each choice circle must start so that it sits exactly on the play circle (FLIP) */
+  function center(el){ var r = el.getBoundingClientRect(); return {x: r.left + r.width/2, y: r.top + r.height/2, w: r.width}; }
+  function fromPlay(h){
+    var prev = h.style.transform; h.style.transition = "none"; h.style.transform = "none";
+    var a = center(ring), hc = center(h), b = center(h.querySelector(".ring.sm"));
+    var sc = a.w / b.w, tx = a.x - hc.x - sc*(b.x - hc.x), ty = a.y - hc.y - sc*(b.y - hc.y);
+    h.style.transform = prev;
+    return {t: "translate(" + tx.toFixed(1) + "px," + ty.toFixed(1) + "px) scale(" + sc.toFixed(4) + ")", ang: Math.atan2(hc.y - a.y, hc.x - a.x)*180/Math.PI};
+  }
+  function arc(h){ return h.querySelector(".rc path"); }
+  playB.addEventListener("click", function(){
+    if(!playB.classList.contains("drawn") || gate.classList.contains("choose")) return;
+    playBeep("play");
+    playB.classList.remove("lit", "pulse", "shine");
+    var fl = halves.map(fromPlay);
+    halves.forEach(function(h, i){   /* each circle starts as the half of the play circle on its own side */
+      var a = arc(h); a.style.transition = "none"; a.style.transform = "rotate(" + fl[i].ang.toFixed(1) + "deg)"; a.style.strokeDasharray = RC; a.style.strokeDashoffset = RC/2; a.style.stroke = "#F7E5BB";   /* they start pale gold, like the play circle */
+      h.style.transition = "none"; h.style.transform = fl[i].t; });
+    pc.style.transition = "none"; pc.style.opacity = 0;
+    pt.style.transition = "opacity .22s ease"; pt.style.opacity = 0; rs.style.display = "none";
+    (function(){ var o = getComputedStyle(gs).opacity; gs.classList.remove("on"); gs.style.opacity = o; void gs.offsetWidth; gs.style.transition = "opacity .22s ease"; gs.style.opacity = 0; })();   /* the lobes fade with the triangle */
+    gate.classList.add("choose");
+    void split.offsetWidth;
+    var go = function(){ halves.forEach(function(h){
+      if(reduced){ h.style.transform = "none"; arc(h).style.strokeDashoffset = 0; return; }
+      h.style.transition = "transform .7s cubic-bezier(.2,.8,.2,1)"; h.style.transform = "none";
+      var a = arc(h); a.style.transition = "stroke-dashoffset 1.2s cubic-bezier(.4,.1,.2,1), stroke 1.2s ease";   /* the two circles complete themselves in 1.2 s (0.7 s before) */ a.style.strokeDashoffset = 0; a.style.stroke = ""; }); };
+    requestAnimationFrame(function(){ requestAnimationFrame(go); });
+    setTimeout(function(){ split.classList.add("show"); }, reduced ? 0 : 380);
+    setTimeout(function(){ gate.classList.add("ready"); }, reduced ? 0 : 1300);   /* pressable 100 ms after the circles are complete */
+    ["start","silent"].forEach(function(id){ document.getElementById(id).removeAttribute("tabindex"); });
+    setTimeout(function(){ document.getElementById("start").focus({preventScroll:true}); }, 400);
+  });
+
+  /* ---- the choice: both circles quiver as if they were made of water and someone had touched it, slowly, like a pond: the one pressed
+     first, the other when the wave reaches it, with wide ripples spreading out; then they sink under the screen, as under the surface
+     of still water, like small round platforms going down, smaller, darker, blurred, wavering. No ripple closes the surface at the end ---- */
+  function liquidExit(hit, done){
+    var NS = "http://www.w3.org/2000/svg", T0 = performance.now(), seed = 7;
+    function rnd(){ seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+    var MODES = [[2, 3.4, .034], [3, 4.6, .04], [4, 5.9, .03]], TAU = .55, BR = [.04, .4, 4.2], LAG = 220, AMP2 = .75, REFR = 1.8;
+    var RIP1 = [[0, 2.4, 1250, 1.1, .5], [.22, 2.9, 1250, .9, .38], [.44, 3.3, 1250, .7, .26]], RIP2 = [[0, 2.3, 1200, 1, .38], [.25, 2.7, 1200, .7, .24]];
+    var SINK0 = 1000, SINK = 1150, TY = 6, SX = .28, SY = .34, BLUR = 6, DARK = .65, END = SINK0 + LAG + SINK + 350;
+    var ov = document.createElementNS(NS, "svg");   /* the ripples live on the "surface": a layer of their own, which does not sink with the circles */
+    ov.style.cssText = "position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:3;color:var(--ink)"; gate.appendChild(ov);
+    var items = halves.map(function(h, i){
+      var svg = h.querySelector(".rc"), path = svg.querySelector("path"), icon = h.querySelector(".ring.sm > svg:not(.rc)"), txt = h.querySelector(".txt");
+      path.style.transition = "none"; path.style.strokeDasharray = "none"; path.style.strokeDashoffset = "0";
+      var main = i === hit, rc = h.querySelector(".ring.sm").getBoundingClientRect();
+      return {h: h, path: path, icon: icon, txt: txt, delay: main ? 0 : LAG, amp: main ? 1 : AMP2, rip: [], sched: (main ? RIP1 : RIP2).slice(), cx: rc.left + rc.width/2, cy: rc.top + rc.height/2, k: rc.width/88,
+        modes: MODES.map(function(m){ return {n: m[0], f: m[1]*(.92 + .16*rnd()), a: m[2]*(.85 + .3*rnd()), ph: rnd()*6.283, psi: rnd()*6.283}; })};
+    });
+    function ripple(it, now, r1, life, w, op){
+      var c = document.createElementNS(NS, "circle"); c.setAttribute("cx", it.cx.toFixed(1)); c.setAttribute("cy", it.cy.toFixed(1)); c.setAttribute("r", (44*it.k).toFixed(2));
+      c.setAttribute("fill", "none"); c.setAttribute("stroke", "currentColor"); c.style.strokeWidth = w; c.style.opacity = op; ov.appendChild(c);
+      it.rip.push({c: c, t0: now, r0: 44*it.k, r1: 44*r1*it.k, life: life, w: w, op: op});
+    }
+    function outline(it, tl, depth){   /* the ring as a liquid: a sum of slowly decaying modes, plus a wavering once it is under the surface */
+      var pts = "", N = 84;
+      for(var j = 0; j < N; j++){
+        var th = j/N*6.2832, r = 1;
+        it.modes.forEach(function(m){ r += it.amp*m.a*Math.exp(-tl/TAU)*Math.sin(6.2832*m.f*tl + m.ph)*Math.cos(m.n*th + m.psi); });
+        r += REFR*(.018*depth*Math.sin(3*th + 5.1*tl) + .012*depth*Math.sin(5*th - 7.3*tl + 1.3));
+        r += BR[0]*it.amp*Math.exp(-tl/BR[1])*Math.sin(6.2832*BR[2]*tl);   /* the whole ring breathes once, like the first touch on water */
+        pts += (j ? "L" : "M") + (44 + 43.5*r*Math.cos(th)).toFixed(2) + " " + (44 + 43.5*r*Math.sin(th)).toFixed(2);
+      }
+      it.path.setAttribute("d", pts + "Z");
+    }
+    function frame(now){
+      var t = now - T0;
+      items.forEach(function(it){
+        var tl = (t - it.delay)/1000; if(tl < 0) return;
+        while(it.sched.length && tl >= it.sched[0][0]){ var q = it.sched.shift(); ripple(it, now, q[1], q[2], q[3], q[4]); }
+        var u = Math.max(0, Math.min(1, (t - SINK0 - it.delay)/SINK)), e = u*u*(3 - 2*u);   /* 0 at the surface, 1 gone */
+        outline(it, tl, e);
+        var q2 = Math.exp(-tl/.3)*Math.sin(6.2832*7.4*tl)*it.amp;
+        if(it.icon) it.icon.style.transform = "scale(" + (1 + .05*q2).toFixed(4) + ")";
+        if(it.txt) it.txt.style.transform = "translateY(" + (1.5*q2).toFixed(2) + "px)";
+        it.h.style.transformOrigin = "50% 32%";
+        it.h.style.transform = "translateY(" + (TY*e).toFixed(2) + "px) scale(" + (1 - SX*e).toFixed(4) + "," + (1 - SY*e).toFixed(4) + ")";
+        it.h.style.filter = e > 0 ? "blur(" + (BLUR*e).toFixed(2) + "px) brightness(" + (1 - DARK*e).toFixed(3) + ")" : "none";
+        it.h.style.opacity = (1 - Math.pow(e, 1.6)).toFixed(3);
+        if(it.txt) it.txt.style.opacity = (1 - Math.min(1, e*1.8)).toFixed(3);
+        it.rip = it.rip.filter(function(r){ var v = (now - r.t0)/r.life; if(v >= 1){ r.c.remove(); return false; }
+          var ev = 1 - Math.pow(1 - v, 2.2); r.c.setAttribute("r", (r.r0 + (r.r1 - r.r0)*ev).toFixed(2)); r.c.style.opacity = (r.op*Math.pow(1 - v, 1.6)).toFixed(3); r.c.style.strokeWidth = (r.w*(1 - .7*v)).toFixed(2); return true; });
+      });
+      if(t < END) requestAnimationFrame(frame); else { ov.remove(); done(); }
+    }
+    requestAnimationFrame(frame);
+  }
+  function choose(withSound){
+    if(gate.classList.contains("leaving")) return;
+    gate.classList.add("leaving"); gate.classList.remove("ready");
+    if(withSound) startSound();
+    else if(window.__songPre){ var sp = window.__songPre; window.__songPre = null; try{ sp.removeAttribute("src"); sp.load(); }catch(e){} }
+    playBeep("choice");
+    var open = function(){ setTimeout(function(){
+      if(withSound){ try{ if(actx && actx.state === "suspended") actx.resume(); }catch(e){} }
+      else setTimeout(function(){ try{ if(!soundStarted && actx && actx.state === "running") actx.suspend(); }catch(e){} }, 5000);   /* nothing else will sound: the audio engine rests */
+      closeGate(); }, 500); };
+    if(reduced){ split.style.visibility = "hidden"; open(); return; }
+    liquidExit(withSound ? 0 : 1, function(){ split.style.visibility = "hidden"; open(); });   /* the circles quiver like water, then sink under the screen as under a water surface */
+  }
+  halves[0].addEventListener("click", function(){ choose(true); });
+  halves[1].addEventListener("click", function(){ choose(false); });
+})();
 
 /* ======= Counters ======= */
 /* In each project card the four numbers start together and land one after another, left to right
@@ -1097,7 +1367,7 @@ if(/[?&]debug(=|&|$)/.test(location.search)){
       var L = [];
       L.push("UA: " + navigator.userAgent.replace(/Mozilla\/5.0 /, "").slice(0, 110));
       L.push("schermo " + innerWidth + "x" + innerHeight + " @" + (window.devicePixelRatio || 1) + " | scroll " + Math.round(scrollY) + " | riduci movimento: " + (reduced ? "SI" : "no") + " | lingua: " + lang);
-      L.push("versione: 23-ott-2026, passo 4: locandine quando servono | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.body.classList.contains("glass-in-smoke") ? "attivo" : "no"));
+      L.push("versione: 23-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno) | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
       var n = 0;
       Array.prototype.forEach.call(document.querySelectorAll("video[data-m]"), function(v){
         var r = v.getBoundingClientRect(), vis = r.height > 0 && r.bottom > 0 && r.top < innerHeight;
