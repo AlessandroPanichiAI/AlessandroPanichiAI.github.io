@@ -54,8 +54,8 @@ en:{
  vfx_p:"Cosmic zooms, explosions and camera moves no set could give: visual effects generated with AI and finished in the edit.",
  c1_h:"Realistic characters",
  c1:"Character sheets and defined identities, for a consistent, solid story.",
- c2_h:"Light and colour in service of the direction",
- c2:"Light sources, shadows and palette, brought together to convey emotion.",
+ c2_h:"Light and colour to convey emotions",
+ c2:"Light sources, shadows and palette, designed together.",
  c3_h:"A quality pipeline",
  c3:"From storyboard to final mix: previs, image and video generation, edit, grade, voices, music and sound.",
  lip_h:"Lip sync", lip_h3:"Corporate video",
@@ -109,8 +109,8 @@ it:{
  vfx_p:"Zoom cosmici, esplosioni e movimenti di macchina impossibili su un set: effetti visivi generati con l'AI e rifiniti in montaggio.",
  c1_h:"Personaggi realistici",
  c1:"Character sheet e identità definite, per una storia coerente e solida.",
- c2_h:"Luce e colore al servizio della regia",
- c2:"Fonti, ombre e palette, riunite per raccontare le emozioni.",
+ c2_h:"Luce e colore per trasmettere emozioni",
+ c2:"Fonti, ombre e palette, progettate insieme.",
  c3_h:"Una pipeline di qualità",
  c3:"Dallo storyboard al mix finale: previsualizzazione, generazione di immagini e video, montaggio, color, voci, musica e suono.",
  lip_h:"Lip sync", lip_h3:"Video corporate",
@@ -489,7 +489,8 @@ document.querySelectorAll(".lang button").forEach(function(b){
   var scale = (innerWidth < 700 ? .5 : .45) * SMOKE_RES, W = 0, H = 0, T = 0, last = 0, running = false, winStart = 0, winFrames = 0;
   var FR = [], rects = new Float32Array(NR*4);
   var MOB = innerWidth < 700;
-  var DESK_DENS = 1.12;                                                         /* computer: 20% less than the previous 1.4 */                                                       /* phones: smoke 15% less dense */
+  var DESK_DENS = 1.12;                                                         /* computer: 20% less than the previous 1.4 */
+  var PH_DENS = .5525;                                                          /* phones: .85 (15% less dense), then 35% less (25-ott-2026) */
   var SLOW = innerWidth < 820 || !!(window.matchMedia && matchMedia("(pointer:coarse)").matches);   /* phones and tablets: lighter drawing */
   var MINDT = SLOW ? 40 : 31, SLOWDT = Math.round(MINDT * 1.6), SCALE_MIN = .25 * SMOKE_RES, goT = 0, bad = 0, rn = 0, rDirty = true, rStamp = 0, gain = 1, gainT = 1, lastGain = 0, panels = null;
   function frames(){ FR = document.querySelectorAll(".hero-panel, .reel-frame, .proj, #bio .glass"); }
@@ -522,9 +523,9 @@ document.querySelectorAll(".lang button").forEach(function(b){
       rDirty = false; rStamp = nowT; }
     var n = rn;
     if(nowT - lastGain > 250){ lastGain = nowT; gainT = MOB ? 1 : Math.min(1.7, Math.max(1, .5/Math.max(.05, coverage())));   /* phones: just the 15% reduction, no boost */ }
-    gain += (gainT - gain) * .06; window.__smokeGain = (MOB ? .85 : DESK_DENS) * gain;
+    gain += (gainT - gain) * .06; window.__smokeGain = (MOB ? PH_DENS : DESK_DENS) * gain;
     gl.useProgram(pr); gl.bindFramebuffer(gl.FRAMEBUFFER, blurOK ? fb[0] : null); gl.viewport(0, 0, W, H);
-    gl.uniform2f(U.uRes, W, H); gl.uniform1f(U.uT, T); gl.uniform1f(U.uReveal, rv); gl.uniform1f(U.uDens, (MOB ? .85 : DESK_DENS) * gain); gl.uniform4fv(U.uR, rects); gl.uniform1i(U.uN, n);
+    gl.uniform2f(U.uRes, W, H); gl.uniform1f(U.uT, T); gl.uniform1f(U.uReveal, rv); gl.uniform1f(U.uDens, (MOB ? PH_DENS : DESK_DENS) * gain); gl.uniform4fv(U.uR, rects); gl.uniform1i(U.uN, n);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     if(!blurOK) return;
     var w = weights(), ox = Math.floor(Math.random()*64), oy = Math.floor(Math.random()*64);
@@ -894,7 +895,7 @@ document.getElementById("soundBtn").addEventListener("click", function(){
   var W = 0, H = 0;
   function size(){ var div = innerWidth < 700 ? 5 : 4; W = cv.width = Math.max(160, Math.round(innerWidth/div)); H = cv.height = Math.max(160, Math.round(innerHeight/div)); }
   size(); addEventListener("resize", size);
-  var ZB_A = .07, zb = null, zbx = null, DEPTH_FADE = .7, SMOKE_BASE = innerWidth < 700 ? .12 : .30, K_SWELL = innerWidth < 700 ? .144 : .12, K_KICK = innerWidth < 700 ? .0336 : .053, K_SNARE = innerWidth < 700 ? .224 : .28,   /* phones: everything that lights the smoke up with the music is 20% lower (x .8 of .18 / .042 / .28) */ BASS_W = innerWidth < 700 ? .189 : .216, ef = 0, es = 0, es0 = 0, cs = 0, hit = 0, sh = 0, amp = 0, pulse = 0, ax = 0, ay = 0, bx = 0, by = 0, cx = 0, cy = 0, t = 0, last = performance.now(), running = false;
+  var ZB_A = .07, zb = null, zbx = null, DEPTH_FADE = .7, SMOKE_BASE = innerWidth < 700 ? .12 : .30, K_SWELL = innerWidth < 700 ? .144 : .12, K_KICK = innerWidth < 700 ? .0336 : .053, K_SNARE = innerWidth < 700 ? .224 : .28,   /* phones: everything that lights the smoke up with the music is 20% lower (x .8 of .18 / .042 / .28) */ BASS_W = innerWidth < 700 ? .189 : .216, FB_PH = innerWidth < 700 ? .715 : 1,   /* phones: the fallback smoke gives 35% less light (25-ott-2026; alpha .715, measured on screen) */ ef = 0, es = 0, es0 = 0, cs = 0, hit = 0, sh = 0, amp = 0, pulse = 0, ax = 0, ay = 0, bx = 0, by = 0, cx = 0, cy = 0, t = 0, last = performance.now(), running = false;
   /* what the player really hears is a little behind the position of the audio element (the sound still has to go out of the device): the light waits for it */
   function audLat(){ var l = 0; try{ if(actx) l = (actx.baseLatency || 0) + (actx.outputLatency || 0); }catch(e){} return Math.max(.03, Math.min(.4, l + .02)); }
   function level(){
@@ -940,12 +941,12 @@ document.getElementById("soundBtn").addEventListener("click", function(){
     ax += dt*sp; ay += dt*sp*.45; bx -= dt*sp*.7; by += dt*sp*.3; cx += dt*sp*.23; cy -= dt*sp*.17; t += dt;
     ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0, 0, W, H);
     /* the smoke fills the screen as before, so it never disappears */
-    ctx.globalAlpha = reveal;
+    ctx.globalAlpha = reveal * FB_PH;
     var sA = W/256*1.1, tA = 256*sA, sB = W/256*1.7, tB = 256*sB, sC = W/256*2.6, tC = 256*sC;
     ctx.setTransform(sA, 0, 0, sA, -(ax % tA), -(ay % tA)); ctx.fillStyle = patA; ctx.fillRect(-256, -256, 256*4, 256*4);
-    ctx.globalAlpha = reveal * .8;
+    ctx.globalAlpha = reveal * .8 * FB_PH;
     ctx.setTransform(sB, 0, 0, sB, -(((bx % tB) + tB) % tB), -(by % tB)); ctx.fillStyle = patB; ctx.fillRect(-256, -256, 256*4, 256*4);
-    ctx.globalAlpha = reveal * (.35 + .25*Math.sin(t*.05));
+    ctx.globalAlpha = reveal * (.35 + .25*Math.sin(t*.05)) * FB_PH;
     ctx.setTransform(sC, 0, 0, sC, -(cx % tC), -(((cy % tC) + tC) % tC)); ctx.fillStyle = patA; ctx.fillRect(-256, -256, 256*4, 256*4);
     /* ...and fades with distance: the further down the tunnel, the fainter, centred on the tunnel's far end so it follows the bends */
     var T = window.__tunnel;
@@ -1367,7 +1368,7 @@ if(/[?&]debug(=|&|$)/.test(location.search)){
       var L = [];
       L.push("UA: " + navigator.userAgent.replace(/Mozilla\/5.0 /, "").slice(0, 110));
       L.push("schermo " + innerWidth + "x" + innerHeight + " @" + (window.devicePixelRatio || 1) + " | scroll " + Math.round(scrollY) + " | riduci movimento: " + (reduced ? "SI" : "no") + " | lingua: " + lang);
-      L.push("versione: 23-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno) | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
+      L.push("versione: 25-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno); fumo sul telefono -35% | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
       var n = 0;
       Array.prototype.forEach.call(document.querySelectorAll("video[data-m]"), function(v){
         var r = v.getBoundingClientRect(), vis = r.height > 0 && r.bottom > 0 && r.top < innerHeight;
