@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types 'none'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="description" content="Alessandro Panichi, AI Film Director and AI Multimedia Specialist in Milan. Short films, corporate videos and social content: humanly ideated, developed with AI.">
 <meta name="theme-color" content="#080706">
@@ -501,7 +501,7 @@ footer{position:relative;z-index:2;text-align:center;color:var(--mute);font-size
       <button class="half" id="silent" type="button" tabindex="-1"><span class="ring sm"><svg class="rc" viewBox="0 0 88 88" aria-hidden="true"><path d="M44 .5A43.5 43.5 0 0 1 44 87.5A43.5 43.5 0 0 1 44 .5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h3l5-4v14l-5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></span><span class="txt" data-i18n="gate_without">Play without audio</span></button>
     </div>
   </div>
-  <video id="plVid" muted autoplay playsinline preload="auto" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1"><source src="media/play_intro.mp4" type='video/mp4; codecs="avc1.640029"'><source src="media/play_intro.webm" type='video/webm; codecs="vp9"'></video>
+  <video id="plVid" muted autoplay playsinline preload="auto" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1"><source src="media/play_intro.mp4?v=20261025b" type='video/mp4; codecs="avc1.640029"'><source src="media/play_intro.webm?v=20261025b" type='video/webm; codecs="vp9"'></video>
 </div>
 
 <div class="ui lang" role="group" aria-label="Language">
@@ -718,6 +718,6 @@ Developed with AI.</p>
   </div>
 </dialog>
 
-<script src="app.js"></script>
+<script src="app.js?v=20261025b"></script>
 </body>
 </html>
