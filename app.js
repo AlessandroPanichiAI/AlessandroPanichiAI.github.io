@@ -1170,28 +1170,31 @@ function playBeep(name){
   function playVideo(){
     var v = document.getElementById("plVid"); if(!v) return false;
     if(!v.play || !v.canPlayType || (!v.canPlayType('video/mp4; codecs="avc1.640029"') && !v.canPlayType('video/webm; codecs="vp9"'))){ v.style.display = "none"; return false; }
-    var BOX = 320, V_SPENT = 1833.333, V_END = 172*1000/60;   /* ms in the video: the pulse starts at V_SPENT; 172 frames */
+    var PLS = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pls")) || 1, BOX = 320*PLS, V_SPENT = 1833.333, V_END = 172*1000/60;   /* ms in the video: the pulse starts at V_SPENT; 172 frames */
     var started = false, handed = false, held = false;
     function place(){ var gr = gate.getBoundingClientRect(), r = ring.getBoundingClientRect();   /* the CSS already centres it; this only corrects a layout that differs */
       v.style.margin = "0"; v.style.left = (r.left - gr.left + r.width/2 - BOX/2).toFixed(1) + "px"; v.style.top = (r.top - gr.top + r.height/2 - BOX/2).toFixed(1) + "px"; }
     place(); addEventListener("resize", place);
     function release(){ try{ v.pause(); while(v.firstChild) v.removeChild(v.firstChild); v.removeAttribute("src"); v.load(); }catch(e){} v.style.display = "none"; }
     function fallback(){ if(handed) return; handed = true; release(); requestAnimationFrame(frame); }
-    var giveUp = setTimeout(function(){ if(!started) fallback(); }, 2500);
+    /* the video counts as started as soon as its time moves, whenever this code loads (on iPhones it may have started, and sent "playing", before this
+       code existed): only a video that has not moved at all after 2.5 s means it is blocked, and only then the live drawing runs, never both */
+    var giveUp = setTimeout(function(){ if(started) return; if(v.currentTime > 0) onPlaying(); else fallback(); }, 2500);
     function onPlaying(){ if(handed){ v.pause(); return; } if(!started){ started = true; clearTimeout(giveUp); requestAnimationFrame(watch); } }
     v.addEventListener("playing", onPlaying);
-    if(!v.paused && v.currentTime > 0) onPlaying();              /* it started by itself (autoplay) before this code had loaded */
+    v.addEventListener("timeupdate", function(){ if(v.currentTime > 0) onPlaying(); });
+    (function seen(){ if(started || handed) return; if(v.currentTime > 0) onPlaying(); else requestAnimationFrame(seen); })();   /* it started by itself (autoplay) before this code had loaded */
     var srcs = v.querySelectorAll("source"); if(srcs.length) srcs[srcs.length - 1].addEventListener("error", function(){ if(!started) fallback(); });
     v.addEventListener("error", function(){ if(!started) fallback(); });
-    document.addEventListener("visibilitychange", function(){ if(!document.hidden && started && !handed && !held && v.paused) v.play(); });
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden && started && !handed && !held && v.paused && !v.ended) v.play(); });
     function watch(){
       if(handed) return;
       var t = v.currentTime*1000;
-      if(!held && t >= tHold - 8 && !ready(performance.now())){   /* the loading is late: the video waits at 90% of the circle, like the star */
+      if(v.ended || t >= V_END - 4){ handoff(Math.max(t, V_END)); return; }   /* first: a video already at its end hands over at once (played again it would start from the beginning) */
+      if(!held && t >= tHold - 8 && t < tHold + 150 && !ready(performance.now())){   /* the loading is late: the video waits at 90% of the circle, like the star (only there, never later) */
         held = true; v.pause();
-        (function poll(){ if(handed) return; if(ready(performance.now())){ held = false; var q = v.play(); if(q && q.catch) q.catch(function(){}); } else setTimeout(poll, 100); })();
+        (function poll(){ if(handed) return; if(ready(performance.now())){ held = false; if(!v.ended){ var q = v.play(); if(q && q.catch) q.catch(function(){}); } } else setTimeout(poll, 100); })();
       }
-      if(v.ended || t >= V_END - 4){ handoff(Math.max(t, V_END)); return; }
       requestAnimationFrame(watch);
     }
     function handoff(t){
@@ -1211,7 +1214,8 @@ function playBeep(name){
       if(window.__plVidTest) window.__plVidTest(e);                /* tests only: nothing happens in the site */
       v.style.display = "none"; setTimeout(release, 600);
     }
-    var p = v.play(); if(p && p.catch) p.catch(function(){ if(!started) fallback(); });
+    if(v.ended){ started = true; clearTimeout(giveUp); handoff(V_END); return true; }   /* the code arrived after the whole video had played: straight to the real button */
+    if(v.paused){ var p = v.play(); if(p && p.catch) p.catch(function(){ if(!started) fallback(); }); }   /* never play() a video that is already running or finished */
     return true;
   }
   if(reduced){ var plv = document.getElementById("plVid"); if(plv){ try{ plv.pause(); }catch(e){} plv.style.display = "none"; }
@@ -1421,7 +1425,7 @@ if(/[?&]debug(=|&|$)/.test(location.search)){
       var L = [];
       L.push("UA: " + navigator.userAgent.replace(/Mozilla\/5.0 /, "").slice(0, 110));
       L.push("schermo " + innerWidth + "x" + innerHeight + " @" + (window.devicePixelRatio || 1) + " | scroll " + Math.round(scrollY) + " | riduci movimento: " + (reduced ? "SI" : "no") + " | lingua: " + lang);
-      L.push("versione: 25-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno); fumo sul telefono: base +60%, picchi -35%; ingresso del play in video | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
+      L.push("versione: 25-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno); fumo sul telefono: base +60%, picchi -35%; ingresso del play in video a risoluzione nativa, play +50% su computer | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
       var n = 0;
       Array.prototype.forEach.call(document.querySelectorAll("video[data-m]"), function(v){
         var r = v.getBoundingClientRect(), vis = r.height > 0 && r.bottom > 0 && r.top < innerHeight;
