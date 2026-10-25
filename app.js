@@ -1163,8 +1163,60 @@ function playBeep(name){
     playB.classList.add("drawn", "shine");                               /* it can be pressed now; the shine of the numbers crosses it */
     setTimeout(function(){ gt.classList.add("glow"); gs.classList.add("on"); }, GLOW_LAG);   /* 0.7 s after the shine starts: the halo */
   }
-  if(reduced){ pc.classList.add("solid"); rs.style.display = "none"; pt.classList.add("on"); gt.classList.add("glow"); gs.classList.add("on"); playB.classList.add("lit", "drawn"); }
-  else requestAnimationFrame(frame);
+  /* the same sequence as a video (25-ott-2026): drawn live, the circle stuttered (above all on phones, where it is drawn while the page is still loading).
+     The video was recorded from this very code, frame by frame at 60 fps, from the black to the moment the play becomes pressable. It waits at 90% of the circle
+     like the star, if the loading is late. At its end the real button takes over in the same state: circle solid and gold, the pulse and the triangle's fade
+     continuing from the same point. If the video does not start (an iPhone in Low Power Mode, an error), the live drawing runs as before. */
+  function playVideo(){
+    var v = document.getElementById("plVid"); if(!v) return false;
+    if(!v.play || !v.canPlayType || (!v.canPlayType('video/mp4; codecs="avc1.640029"') && !v.canPlayType('video/webm; codecs="vp9"'))){ v.style.display = "none"; return false; }
+    var BOX = 320, V_SPENT = 1833.333, V_END = 172*1000/60;   /* ms in the video: the pulse starts at V_SPENT; 172 frames */
+    var started = false, handed = false, held = false;
+    function place(){ var gr = gate.getBoundingClientRect(), r = ring.getBoundingClientRect();   /* the CSS already centres it; this only corrects a layout that differs */
+      v.style.margin = "0"; v.style.left = (r.left - gr.left + r.width/2 - BOX/2).toFixed(1) + "px"; v.style.top = (r.top - gr.top + r.height/2 - BOX/2).toFixed(1) + "px"; }
+    place(); addEventListener("resize", place);
+    function release(){ try{ v.pause(); while(v.firstChild) v.removeChild(v.firstChild); v.removeAttribute("src"); v.load(); }catch(e){} v.style.display = "none"; }
+    function fallback(){ if(handed) return; handed = true; release(); requestAnimationFrame(frame); }
+    var giveUp = setTimeout(function(){ if(!started) fallback(); }, 2500);
+    function onPlaying(){ if(handed){ v.pause(); return; } if(!started){ started = true; clearTimeout(giveUp); requestAnimationFrame(watch); } }
+    v.addEventListener("playing", onPlaying);
+    if(!v.paused && v.currentTime > 0) onPlaying();              /* it started by itself (autoplay) before this code had loaded */
+    var srcs = v.querySelectorAll("source"); if(srcs.length) srcs[srcs.length - 1].addEventListener("error", function(){ if(!started) fallback(); });
+    v.addEventListener("error", function(){ if(!started) fallback(); });
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden && started && !handed && !held && v.paused) v.play(); });
+    function watch(){
+      if(handed) return;
+      var t = v.currentTime*1000;
+      if(!held && t >= tHold - 8 && !ready(performance.now())){   /* the loading is late: the video waits at 90% of the circle, like the star */
+        held = true; v.pause();
+        (function poll(){ if(handed) return; if(ready(performance.now())){ held = false; var q = v.play(); if(q && q.catch) q.catch(function(){}); } else setTimeout(poll, 100); })();
+      }
+      if(v.ended || t >= V_END - 4){ handoff(Math.max(t, V_END)); return; }
+      requestAnimationFrame(watch);
+    }
+    function handoff(t){
+      handed = true; closed = true; solidDone = true; window.__gateS = 1 + EXIT;
+      playB.classList.add("vh");                                   /* the final look of the circle at once, without its transitions */
+      pc.classList.add("solid"); rs.style.display = "none"; tip.style.opacity = 0; segs.forEach(function(sg){ sg.style.opacity = 0; });
+      playB.classList.add("lit"); void getComputedStyle(pc).opacity; void getComputedStyle(svg.querySelector(".gc")).filter;
+      playB.classList.remove("vh"); void getComputedStyle(pt).opacity;
+      var e = t - V_SPENT;                                         /* time since the pulse started, in the video */
+      playB.classList.add("pulse"); pt.classList.add("on"); void getComputedStyle(pt).opacity;
+      try{ svg.getAnimations({subtree: true}).forEach(function(a){
+        var n = a.animationName || a.transitionProperty || "";
+        if(n === "plPulse" || n === "plHalo") a.currentTime = e;
+        else if(n === "opacity" && a.effect && a.effect.target === pt) a.currentTime = Math.max(0, e - (PULSE*PLAY_AT - TRI_EARLY));
+      }); }catch(err){}
+      finish();
+      if(window.__plVidTest) window.__plVidTest(e);                /* tests only: nothing happens in the site */
+      v.style.display = "none"; setTimeout(release, 600);
+    }
+    var p = v.play(); if(p && p.catch) p.catch(function(){ if(!started) fallback(); });
+    return true;
+  }
+  if(reduced){ var plv = document.getElementById("plVid"); if(plv){ try{ plv.pause(); }catch(e){} plv.style.display = "none"; }
+    pc.classList.add("solid"); rs.style.display = "none"; pt.classList.add("on"); gt.classList.add("glow"); gs.classList.add("on"); playB.classList.add("lit", "drawn"); }
+  else if(!playVideo()) requestAnimationFrame(frame);
 
   /* where each choice circle must start so that it sits exactly on the play circle (FLIP) */
   function center(el){ var r = el.getBoundingClientRect(); return {x: r.left + r.width/2, y: r.top + r.height/2, w: r.width}; }
@@ -1369,7 +1421,7 @@ if(/[?&]debug(=|&|$)/.test(location.search)){
       var L = [];
       L.push("UA: " + navigator.userAgent.replace(/Mozilla\/5.0 /, "").slice(0, 110));
       L.push("schermo " + innerWidth + "x" + innerHeight + " @" + (window.devicePixelRatio || 1) + " | scroll " + Math.round(scrollY) + " | riduci movimento: " + (reduced ? "SI" : "no") + " | lingua: " + lang);
-      L.push("versione: 25-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno); fumo sul telefono: base +60%, picchi -35% | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
+      L.push("versione: 25-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno); fumo sul telefono: base +60%, picchi -35%; ingresso del play in video | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
       var n = 0;
       Array.prototype.forEach.call(document.querySelectorAll("video[data-m]"), function(v){
         var r = v.getBoundingClientRect(), vis = r.height > 0 && r.bottom > 0 && r.top < innerHeight;

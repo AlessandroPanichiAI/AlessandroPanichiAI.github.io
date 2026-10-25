@@ -473,6 +473,12 @@ footer{position:relative;z-index:2;text-align:center;color:var(--mute);font-size
   .proj .meta,.stage .yr,.tgrid p,.stack,.fig .lab,.hero .line,.refs{color:#444}
   h2{font-size:20pt;margin-bottom:8px} section{padding:0!important;break-inside:avoid}
 }
+/* the entrance of the play is a video (drawing it live made it stutter, above all on phones): it sits on the play. It was recorded on the gate's own
+   colour (#050404) and is blended with "lighten": where the play is not drawn it is the gate itself, so no box shows, even in a browser that ignored the blend.
+   When the play becomes pressable the real button takes its place */
+#plVid{position:absolute;left:50%;top:calc(50% + (env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))/2);width:320px;height:320px;margin:-160px 0 0 -160px;pointer-events:none;mix-blend-mode:lighten;z-index:3;background:transparent}   /* centred on the play by CSS alone: it can start before the code has loaded */
+@media (prefers-reduced-motion: reduce){#plVid{display:none}}
+.play.vh .pl,.play.vh .gc,.play.vh .pl-t{transition:none!important}
 </style>
 </head>
 <body class="locked">
@@ -495,6 +501,7 @@ footer{position:relative;z-index:2;text-align:center;color:var(--mute);font-size
       <button class="half" id="silent" type="button" tabindex="-1"><span class="ring sm"><svg class="rc" viewBox="0 0 88 88" aria-hidden="true"><path d="M44 .5A43.5 43.5 0 0 1 44 87.5A43.5 43.5 0 0 1 44 .5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h3l5-4v14l-5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg></span><span class="txt" data-i18n="gate_without">Play without audio</span></button>
     </div>
   </div>
+  <video id="plVid" muted autoplay playsinline preload="auto" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1"><source src="media/play_intro.mp4" type='video/mp4; codecs="avc1.640029"'><source src="media/play_intro.webm" type='video/webm; codecs="vp9"'></video>
 </div>
 
 <div class="ui lang" role="group" aria-label="Language">
