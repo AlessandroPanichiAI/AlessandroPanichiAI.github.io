@@ -490,7 +490,7 @@ document.querySelectorAll(".lang button").forEach(function(b){
   var FR = [], rects = new Float32Array(NR*4);
   var MOB = innerWidth < 700;
   var DESK_DENS = 1.12;                                                         /* computer: 20% less than the previous 1.4 */
-  var PH_DENS = .5525;                                                          /* phones: .85 (15% less dense), then 35% less (25-ott-2026) */
+  var PH_DENS = .85;                                                            /* phones: 15% less dense than the computer's first version; the change of 25-ott-2026 (resting level up, peaks down) is in GL_REV / FB_REV */
   var SLOW = innerWidth < 820 || !!(window.matchMedia && matchMedia("(pointer:coarse)").matches);   /* phones and tablets: lighter drawing */
   var MINDT = SLOW ? 40 : 31, SLOWDT = Math.round(MINDT * 1.6), SCALE_MIN = .25 * SMOKE_RES, goT = 0, bad = 0, rn = 0, rDirty = true, rStamp = 0, gain = 1, gainT = 1, lastGain = 0, panels = null;
   function frames(){ FR = document.querySelectorAll(".hero-panel, .reel-frame, .proj, #bio .glass"); }
@@ -515,7 +515,7 @@ document.querySelectorAll(".lang button").forEach(function(b){
     return sum/(cols*rows);
   }
   function draw(dt){
-    var rv = window.__smokeReveal || .1; T += dt * (1 + rv*1.2) * .24;       /* a little livelier when the music swells */
+    var rv = window.__smokeReveal || .1, mv = (typeof window.__smokeMotion === "number") ? window.__smokeMotion : rv; T += dt * (1 + mv*1.2) * .24;       /* a little livelier when the music swells */
     var nowT = performance.now();
     if(rDirty || nowT - rStamp > 300){ rn = 0;      /* the frames' positions only change when the page scrolls or resizes */
       for(var i=0;i<FR.length && rn<NR;i++){ var b = FR[i].getBoundingClientRect(); if(b.bottom < -60 || b.top > innerHeight + 60) continue;
@@ -895,7 +895,7 @@ document.getElementById("soundBtn").addEventListener("click", function(){
   var W = 0, H = 0;
   function size(){ var div = innerWidth < 700 ? 5 : 4; W = cv.width = Math.max(160, Math.round(innerWidth/div)); H = cv.height = Math.max(160, Math.round(innerHeight/div)); }
   size(); addEventListener("resize", size);
-  var ZB_A = .07, zb = null, zbx = null, DEPTH_FADE = .7, SMOKE_BASE = innerWidth < 700 ? .12 : .30, K_SWELL = innerWidth < 700 ? .144 : .12, K_KICK = innerWidth < 700 ? .0336 : .053, K_SNARE = innerWidth < 700 ? .224 : .28,   /* phones: everything that lights the smoke up with the music is 20% lower (x .8 of .18 / .042 / .28) */ BASS_W = innerWidth < 700 ? .189 : .216, FB_PH = innerWidth < 700 ? .715 : 1,   /* phones: the fallback smoke gives 35% less light (25-ott-2026; alpha .715, measured on screen) */ ef = 0, es = 0, es0 = 0, cs = 0, hit = 0, sh = 0, amp = 0, pulse = 0, ax = 0, ay = 0, bx = 0, by = 0, cx = 0, cy = 0, t = 0, last = performance.now(), running = false;
+  var ZB_A = .07, zb = null, zbx = null, DEPTH_FADE = .7, SMOKE_BASE = innerWidth < 700 ? .12 : .30, K_SWELL = innerWidth < 700 ? .144 : .12, K_KICK = innerWidth < 700 ? .0336 : .053, K_SNARE = innerWidth < 700 ? .224 : .28,   /* phones: everything that lights the smoke up with the music is 20% lower (x .8 of .18 / .042 / .28) */ BASS_W = innerWidth < 700 ? .189 : .216, PH_SMOKE = innerWidth < 700,   /* phones (25-ott-2026): narrower range, so the smoke never disappears and the beat flashes are softer: the resting level is about 60% brighter and the peaks of the song 35% lower than before (measured on screen, both smokes; "Base 2" of the preview). reveal -> [offset, slope] */ GL_REV = PH_SMOKE ? [.1319, .0794] : [0, 1], FB_REV = PH_SMOKE ? [.12546, .377] : [0, 1], ef = 0, es = 0, es0 = 0, cs = 0, hit = 0, sh = 0, amp = 0, pulse = 0, ax = 0, ay = 0, bx = 0, by = 0, cx = 0, cy = 0, t = 0, last = performance.now(), running = false;
   /* what the player really hears is a little behind the position of the audio element (the sound still has to go out of the device): the light waits for it */
   function audLat(){ var l = 0; try{ if(actx) l = (actx.baseLatency || 0) + (actx.outputLatency || 0); }catch(e){} return Math.max(.03, Math.min(.4, l + .02)); }
   function level(){
@@ -935,18 +935,19 @@ document.getElementById("soundBtn").addEventListener("click", function(){
     } else { hit *= Math.exp(-dd/.22); sh *= Math.exp(-dd/.22); }
     amp = ef; pulse = hit;
     var reveal = Math.min(.9, SMOKE_BASE + K_SWELL*swell + K_KICK*hit + K_SNARE*sh);
-    window.__smokeReveal = reveal;
+    window.__smokeMotion = reveal; window.__smokeReveal = GL_REV[0] + GL_REV[1]*reveal;   /* the WebGL smoke gets the remapped level; its speed keeps following the original one */
+    var rvf = FB_REV[0] + FB_REV[1]*reveal;                                              /* the fallback smoke: remapped alpha */
     if(window.__glSmoke){ return; }   /* the realistic smoke is drawing: this one only provides the music-driven density */
     var sp = 6 + amp*10;
     ax += dt*sp; ay += dt*sp*.45; bx -= dt*sp*.7; by += dt*sp*.3; cx += dt*sp*.23; cy -= dt*sp*.17; t += dt;
     ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0, 0, W, H);
     /* the smoke fills the screen as before, so it never disappears */
-    ctx.globalAlpha = reveal * FB_PH;
+    ctx.globalAlpha = rvf;
     var sA = W/256*1.1, tA = 256*sA, sB = W/256*1.7, tB = 256*sB, sC = W/256*2.6, tC = 256*sC;
     ctx.setTransform(sA, 0, 0, sA, -(ax % tA), -(ay % tA)); ctx.fillStyle = patA; ctx.fillRect(-256, -256, 256*4, 256*4);
-    ctx.globalAlpha = reveal * .8 * FB_PH;
+    ctx.globalAlpha = rvf * .8;
     ctx.setTransform(sB, 0, 0, sB, -(((bx % tB) + tB) % tB), -(by % tB)); ctx.fillStyle = patB; ctx.fillRect(-256, -256, 256*4, 256*4);
-    ctx.globalAlpha = reveal * (.35 + .25*Math.sin(t*.05)) * FB_PH;
+    ctx.globalAlpha = rvf * (.35 + .25*Math.sin(t*.05));
     ctx.setTransform(sC, 0, 0, sC, -(cx % tC), -(((cy % tC) + tC) % tC)); ctx.fillStyle = patA; ctx.fillRect(-256, -256, 256*4, 256*4);
     /* ...and fades with distance: the further down the tunnel, the fainter, centred on the tunnel's far end so it follows the bends */
     var T = window.__tunnel;
@@ -1368,7 +1369,7 @@ if(/[?&]debug(=|&|$)/.test(location.search)){
       var L = [];
       L.push("UA: " + navigator.userAgent.replace(/Mozilla\/5.0 /, "").slice(0, 110));
       L.push("schermo " + innerWidth + "x" + innerHeight + " @" + (window.devicePixelRatio || 1) + " | scroll " + Math.round(scrollY) + " | riduci movimento: " + (reduced ? "SI" : "no") + " | lingua: " + lang);
-      L.push("versione: 25-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno); fumo sul telefono -35% | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
+      L.push("versione: 25-ott-2026, ingresso: stella, alone che gira, scelta e uscita nell'acqua (Stagno); fumo sul telefono: base +60%, picchi -35% | pagina: " + document.body.className + " | audio: " + (typeof actx !== "undefined" && actx ? actx.state : "—") + " | suono: " + (typeof soundOn !== "undefined" ? soundOn : "?") + " | fumo WebGL: " + (document.documentElement.classList.contains("gl-smoke") ? "attivo" : "no") + (window.__smokeInfo ? " (" + window.__smokeInfo + ")" : ""));
       var n = 0;
       Array.prototype.forEach.call(document.querySelectorAll("video[data-m]"), function(v){
         var r = v.getBoundingClientRect(), vis = r.height > 0 && r.bottom > 0 && r.top < innerHeight;
